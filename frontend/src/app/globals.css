@@ -1,0 +1,210 @@
+@import 'tailwindcss';
+
+/* Self-hosted Inter. Bundled from node_modules so builds never depend on a font
+   CDN and Chromium renders the PDF with byte-identical metrics to the preview. */
+@import '@fontsource-variable/inter/wght.css';
+
+/* Tailwind v4 scans from the CSS file's location outward; be explicit. */
+@source '../';
+
+@theme {
+  --font-sans:
+    'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+
+  /* Application chrome */
+  --color-canvas: #f4f3fc;
+  --color-surface: #ffffff;
+
+  /* Ink ramp — cool, slightly violet neutrals that sit well against the accents */
+  --color-ink-50: #f5f3fb;
+  --color-ink-100: #e8e4f2;
+  --color-ink-200: #cfc8e2;
+  /*
+   * Contrast-verified against #ffffff and --color-canvas (#f4f3fc):
+   *   ink-300 #8e80ae  3.59 / 3.26  — decorative and disabled only
+   *   ink-400 #74649a  5.21 / 4.73  — the lightest step usable for real text
+   *   ink-500 #665689  6.45 / 5.86
+   * The previous ink-400 (#8778a8) measured 3.98 on white and failed WCAG AA
+   * for body text, so every informational use moved to these values.
+   */
+  --color-ink-300: #8e80ae;
+  --color-ink-400: #74649a;
+  --color-ink-500: #665689;
+  --color-ink-600: #4e3f6d;
+  --color-ink-700: #3a2d54;
+  --color-ink-800: #261b3c;
+  --color-ink-900: #170e28;
+  --color-ink-950: #0b0616;
+
+  --shadow-card: 0 1px 2px rgb(15 6 22 / 0.04), 0 8px 24px -12px rgb(15 6 22 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(15 6 22 / 0.05), 0 18px 40px -18px rgb(15 6 22 / 0.22);
+}
+
+@layer base {
+  * {
+    /* Keep printed backgrounds. Chromium honours this in headless PDF. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink-800);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+    font-variant-ligatures: contextual;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Consistent, always-visible focus treatment. */
+  :focus-visible {
+    outline: 2px solid var(--color-ink-900);
+    outline-offset: 2px;
+  }
+
+  /* Tabular figures wherever a number is meant to line up. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-ink-900) 18%, transparent);
+  }
+}
+
+@layer components {
+  /* --------------------------------------------------------------------- */
+  /* Document page geometry                                                */
+  /* --------------------------------------------------------------------- */
+
+  /*
+   * The brief renders at exactly one A4 width so the on-screen preview and the
+   * printed PDF are the same layout, never a reflow. 210mm resolves to 793.7px
+   * at 96dpi, which is what Chromium uses for print.
+   */
+  .doc-page {
+    width: 210mm;
+    background: var(--color-canvas);
+    color: var(--color-ink-800);
+    /* Every type size in the document is set explicitly in px against this
+       base so the preview and the printed page are identical. */
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  /* Horizontal inset used by every non-bleed section: matches the sample's 12mm. */
+  .doc-inset {
+    padding-inline: 12mm;
+  }
+
+  /* Never split these across a page boundary. */
+  .doc-keep {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .doc-break-before {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* --------------------------------------------------------------------- */
+  /* Preview scaling                                                       */
+  /* --------------------------------------------------------------------- */
+
+  /*
+   * `--doc-scale` is set inline by the preview shell. The wrapper reserves the
+   * scaled height so the surrounding scroll container measures correctly.
+   */
+  .doc-scaler {
+    transform-origin: top left;
+  }
+
+  /*
+   * The preview frame pins a scaled height and clips overflow. Both must be
+   * released for print, or the tail of the document is cut off in the PDF.
+   */
+  .doc-frame {
+    position: relative;
+    overflow: hidden;
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Print                                                                     */
+/* ------------------------------------------------------------------------- */
+
+@page {
+  size: A4;
+  /* The hero and footer are full-bleed, so all inset is handled in CSS. */
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    width: 210mm;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  /* Anything chrome-like disappears on paper. */
+  .no-print {
+    display: none !important;
+  }
+
+  .doc-scaler {
+    transform: none !important;
+    width: 210mm !important;
+  }
+
+  .doc-frame {
+    height: auto !important;
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  .doc-page {
+    width: 210mm;
+    box-shadow: none !important;
+  }
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  /* Avoid orphaned headings at the foot of a page. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

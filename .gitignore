@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Next
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Environment — never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# Test and build output
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+artifacts/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
