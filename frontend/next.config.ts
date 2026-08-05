@@ -8,6 +8,14 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
 
+  experimental: {
+    // Next's rewrite proxy defaults to a 30s timeout, but brief generation
+    // (backend/src/app/api/briefs/route.ts's maxDuration) can legitimately run
+    // for minutes on a long transcript. Match the two so the proxy never kills
+    // a request the backend is still happily working on.
+    proxyTimeout: 600_000,
+  },
+
   /*
    * Proxy `/api/*` to the backend service transparently. This is what lets every
    * client-side `fetch('/api/...')` call site (NewBriefForm, ExportBar, LoginForm,
