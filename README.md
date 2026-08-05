@@ -58,7 +58,7 @@ two separate Railway services, not one build with two entry points.
 | --- | --- | --- |
 | Framework | Next.js 16 (App Router), React 19, TypeScript strict | One request/response model for both the API and the print target |
 | Styling | Tailwind CSS 4, self-hosted Inter | No font CDN at build or runtime, so the PDF is byte-stable |
-| Model | OpenRouter → DeepSeek V4 Flash / Pro | 1M context, ~$0.002 per brief on Flash |
+| Model | OpenRouter → GPT-5.6 Luna / Luna Pro | 1M context, ~$0.004 per brief |
 | Database | Postgres via `pg` and plain SQL | One table; no ORM engine binary to ship |
 | PDF | Puppeteer driving system Chromium | The export *is* the preview — one implementation of the document |
 | DOCX | `docx` (programmatic OOXML) | Editable output, not a screenshot in a wrapper |
@@ -69,20 +69,22 @@ two separate Railway services, not one build with two entry points.
 
 ## Cost
 
-Verified on openrouter.ai, 30 July 2026:
+Verified on openrouter.ai, 5 August 2026:
 
 | Model | Context | Input | Output |
 | --- | --- | --- | --- |
-| `deepseek/deepseek-v4-flash` | 1,048,576 | $0.09 / M tokens | $0.18 / M tokens |
-| `deepseek/deepseek-v4-pro` | 1,048,576 | $0.435 / M tokens | $0.87 / M tokens |
+| `openai/gpt-5.6-luna` | 1,050,000 | $0.10 / M tokens | $0.60 / M tokens |
+| `openai/gpt-5.6-luna-pro` | 1,050,000 | $0.10 / M tokens | $0.60 / M tokens |
 
 A 60-minute meeting is roughly 11k input and 5k output tokens:
 
-- **Flash** — (11,000 × 0.09 + 5,000 × 0.18) ÷ 1,000,000 = **$0.0019**
-- **Pro** — (11,000 × 0.435 + 5,000 × 0.87) ÷ 1,000,000 = **$0.0092**
+- **Luna** — (11,000 × 0.10 + 5,000 × 0.60) ÷ 1,000,000 = **$0.0041**
+- **Luna Pro** — (11,000 × 0.10 + 5,000 × 0.60) ÷ 1,000,000 = **$0.0041**
 
-At 200 meetings a month on Flash that is about **$0.38/month** in model cost.
-Flash is the default; Pro is a per-brief toggle for long or dense meetings.
+At 200 meetings a month on Luna that is about **$0.82/month** in model cost.
+Luna is the default; Luna Pro is a per-brief toggle for long or dense meetings —
+priced the same today, but kept as a separate slug since OpenRouter can reprice
+either independently.
 
 ---
 

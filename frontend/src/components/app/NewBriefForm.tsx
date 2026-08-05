@@ -416,8 +416,8 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
                   disabled={busy}
                   onChange={(e) => set('depth', e.target.value as BriefInputs['depth'])}
                 >
-                  <option value="fast">Standard — DeepSeek V4 Flash (~$0.002 a brief)</option>
-                  <option value="deep">Deep — DeepSeek V4 Pro (~$0.012 a brief)</option>
+                  <option value="fast">Standard — GPT-5.6 Luna (~$0.004 a brief)</option>
+                  <option value="deep">Deep — GPT-5.6 Luna Pro (~$0.004 a brief)</option>
                 </Select>
               </Field>
             </div>

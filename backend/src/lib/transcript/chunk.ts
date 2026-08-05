@@ -5,7 +5,7 @@ import { toDialogue } from './stats';
 /**
  * Chunking for oversized transcripts.
  *
- * DeepSeek V4 carries a 1,048,576-token context, so in practice a single meeting
+ * GPT-5.6 Luna carries a 1,050,000-token context, so in practice a single meeting
  * always fits in one request. Chunking exists for two reasons:
  *   1. A day-long recording or a merged multi-meeting file can still exceed it.
  *   2. Sending 400k tokens costs ~40x more than sending 10k, and the map-reduce

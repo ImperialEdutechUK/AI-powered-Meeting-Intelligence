@@ -189,6 +189,7 @@ function Caveat({ children }: { children: React.ReactNode }) {
 
 /**
  * `deepseek/deepseek-v4-flash` -> `DeepSeek V4 Flash`.
+ * `openai/gpt-5.6-luna` -> `GPT 5.6 Luna`.
  * The raw slug truncates in a three-column grid and reads like plumbing.
  */
 function shortModel(model: string): string {
@@ -199,6 +200,7 @@ function shortModel(model: string): string {
     .map((part) => {
       if (/^v\d+/i.test(part)) return part.toUpperCase();
       if (part.toLowerCase() === 'deepseek') return 'DeepSeek';
+      if (part.toLowerCase() === 'gpt') return 'GPT';
       return part.charAt(0).toUpperCase() + part.slice(1);
     })
     .join(' ');
