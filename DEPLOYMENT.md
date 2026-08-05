@@ -67,8 +67,8 @@ door code: share it internally, change it when someone leaves.
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `OPENROUTER_MODEL_FAST` | `deepseek/deepseek-v4-flash` | The default model |
-| `OPENROUTER_MODEL_DEEP` | `deepseek/deepseek-v4-pro` | The "Deep" toggle on the form |
+| `OPENROUTER_MODEL_FAST` | `openai/gpt-5.6-luna` | The default model |
+| `OPENROUTER_MODEL_DEEP` | `openai/gpt-5.6-luna-pro` | The "Deep" toggle on the form |
 | `MAX_UPLOAD_MB` | `25` | Upload ceiling |
 | `RATE_LIMIT_PER_HOUR` | `40` | Briefs per IP per hour |
 | `SESSION_HOURS` | `72` | How long a sign-in lasts |
@@ -153,8 +153,8 @@ Three components:
 
 - **Railway** — two containers plus Postgres, on Railway's usage pricing. The
   frontend is small; expect the backend and Postgres to dominate.
-- **OpenRouter** — about $0.002 per brief on Flash. 200 meetings a month is
-  roughly $0.38. The library page shows cumulative spend, and every brief records
+- **OpenRouter** — about $0.004 per brief on the default model. 200 meetings a
+  month is roughly $0.82. The library page shows cumulative spend, and every brief records
   its own token counts and cost.
 
 ### Backups
@@ -232,7 +232,7 @@ Worth knowing before you circulate the passcode:
   checked in one place per route.
 - **Transcripts are not stored.** Only the generated brief and the measured
   statistics are persisted. The uploaded file is parsed in memory and discarded.
-- **Meeting content is sent to OpenRouter**, which routes it to DeepSeek. Confirm
+- **Meeting content is sent to OpenRouter**, which routes it to OpenAI. Confirm
   that is acceptable under your data-protection obligations before using this for
   anything confidential, and note the confidentiality selector on the form is a
   label on the document, not an access control.

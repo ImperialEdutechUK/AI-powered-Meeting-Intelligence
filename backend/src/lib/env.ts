@@ -38,12 +38,12 @@ const schema = z.object({
   OPENROUTER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
 
   /**
-   * Model slugs. Verified against openrouter.ai on 2026-07-30:
-   *   deepseek/deepseek-v4-flash — 1,048,576 ctx, $0.09/$0.18 per M tokens
-   *   deepseek/deepseek-v4-pro   — 1,048,576 ctx, $0.435/$0.87 per M tokens
+   * Model slugs. Verified against openrouter.ai on 2026-08-05:
+   *   openai/gpt-5.6-luna      — 1,050,000 ctx, $0.10/$0.60 per M tokens
+   *   openai/gpt-5.6-luna-pro  — 1,050,000 ctx, $0.10/$0.60 per M tokens
    */
-  OPENROUTER_MODEL_FAST: z.string().min(1).default('deepseek/deepseek-v4-flash'),
-  OPENROUTER_MODEL_DEEP: z.string().min(1).default('deepseek/deepseek-v4-pro'),
+  OPENROUTER_MODEL_FAST: z.string().min(1).default('openai/gpt-5.6-luna'),
+  OPENROUTER_MODEL_DEEP: z.string().min(1).default('openai/gpt-5.6-luna-pro'),
 
   /** Optional attribution headers OpenRouter shows on your dashboard. */
   OPENROUTER_SITE_URL: z.string().url().optional(),

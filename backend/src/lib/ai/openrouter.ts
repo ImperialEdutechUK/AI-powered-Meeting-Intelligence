@@ -59,10 +59,12 @@ export class OpenRouterError extends Error {
   }
 }
 
-/** Prices per million tokens, verified on openrouter.ai on 2026-07-30. */
+/** Prices per million tokens, verified on openrouter.ai on 2026-08-05. */
 export const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   'deepseek/deepseek-v4-flash': { input: 0.09, output: 0.18 },
   'deepseek/deepseek-v4-pro': { input: 0.435, output: 0.87 },
+  'openai/gpt-5.6-luna': { input: 0.1, output: 0.6 },
+  'openai/gpt-5.6-luna-pro': { input: 0.1, output: 0.6 },
 };
 
 export function modelForTier(tier: ModelTier): string {

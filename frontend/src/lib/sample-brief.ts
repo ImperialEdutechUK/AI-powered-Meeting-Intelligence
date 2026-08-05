@@ -418,7 +418,7 @@ export const SAMPLE_BUNDLE: BriefBundle = {
   },
 
   telemetry: {
-    model: 'deepseek/deepseek-v4-flash',
+    model: 'openai/gpt-5.6-luna',
     strategy: 'single-pass',
     calls: [
       {
