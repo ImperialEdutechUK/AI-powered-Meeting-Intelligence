@@ -20,7 +20,6 @@ import {
 import type { BriefBundle } from '@/lib/brief-bundle';
 import { CONFIDENTIALITY_LEVELS, getBundleDepartments, getDepartment } from '@/lib/departments';
 import {
-  BADGE_HEX,
   CALLOUTS,
   CHIPS,
   HUES,
@@ -644,7 +643,7 @@ function ownersTable(bundle: BriefBundle): (Paragraph | Table)[] {
       rows.push(
         new TableRow({
           cantSplit: true,
-          children: pair.map((owner, column) => {
+          children: pair.map((owner) => {
             if (!owner) {
               return new TableCell({
                 children: [new Paragraph({ children: [] })],
@@ -652,20 +651,10 @@ function ownersTable(bundle: BriefBundle): (Paragraph | Table)[] {
                 borders: NO_BORDERS,
               });
             }
-            const badgeFill = BADGE_HEX[(i + column) % BADGE_HEX.length] ?? '475569';
             return new TableCell({
               children: [
                 para(
-                  [
-                    run(` ${owner.badge} `, {
-                      bold: true,
-                      size: 14,
-                      color: 'FFFFFF',
-                      shadingFill: badgeFill,
-                    }),
-                    run('  ', { size: 20 }),
-                    run(owner.name, { bold: true, size: 21, color: INK.dark }),
-                  ],
+                  [run(owner.name, { bold: true, size: 21, color: INK.dark })],
                   { spacingAfter: 40 },
                 ),
                 ...(owner.role

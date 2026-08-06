@@ -1,7 +1,6 @@
 import { cn, joinNames } from '@/lib/utils';
 import type { Department, Hue } from '@/lib/departments';
 import {
-  badgeStyle,
   callout as calloutTokens,
   hue as hueTokens,
   rotateHue,
@@ -17,7 +16,6 @@ import type { TranscriptFacts } from '@/lib/brief-bundle';
 import { formatDuration } from '@/lib/transcript/cues';
 import { sharePctLabel } from '@/lib/transcript/stats';
 import {
-  Badge,
   Chip,
   Eyebrow,
   MetaChip,
@@ -556,23 +554,20 @@ export function DocOwners({ brief, seed }: { brief: Brief; seed: Hue }) {
 
       {brief.owners.length > 0 ? (
         <div className="mt-[10px] grid grid-cols-2 gap-x-[9px] gap-y-[9px]">
-          {brief.owners.map((owner, index) => (
+          {brief.owners.map((owner) => (
             <div
               key={owner.name}
-              className="doc-keep flex gap-[9px] rounded-[9px] bg-white px-[11px] py-[10px] shadow-[0_1px_2px_rgba(15,6,22,0.05)]"
+              className="doc-keep rounded-[9px] bg-white px-[11px] py-[10px] shadow-[0_1px_2px_rgba(15,6,22,0.05)]"
             >
-              <Badge className={badgeStyle(index)}>{owner.badge}</Badge>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold leading-[1.3] text-ink-900">{owner.name}</p>
-                {owner.role ? (
-                  <p className="mt-[1px] text-[8.5px] font-semibold leading-[1.35] text-ink-400">
-                    {owner.role}
-                  </p>
-                ) : null}
-                <p className="mt-[4px] text-[9.5px] leading-[1.5] text-ink-600">
-                  {owner.assignment}
+              <p className="text-[11px] font-bold leading-[1.3] text-ink-900">{owner.name}</p>
+              {owner.role ? (
+                <p className="mt-[1px] text-[8.5px] font-semibold leading-[1.35] text-ink-400">
+                  {owner.role}
                 </p>
-              </div>
+              ) : null}
+              <p className="mt-[4px] text-[9.5px] leading-[1.5] text-ink-600">
+                {owner.assignment}
+              </p>
             </div>
           ))}
         </div>

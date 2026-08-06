@@ -293,7 +293,7 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
               value={inputs.chair}
               maxLength={80}
               disabled={busy}
-              placeholder="e.g. Sophia Turner"
+              placeholder="Sophia Turner"
               onChange={(e) => set('chair', e.target.value)}
             />
           </Field>
