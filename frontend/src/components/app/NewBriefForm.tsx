@@ -367,7 +367,12 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
                 />
               </Field>
 
-              <Field label="Anyone absent" htmlFor="absentees" optional>
+              <Field
+                label="Anyone absent"
+                htmlFor="absentees"
+                optional
+                hint="Named but not present. Kept out of the attendee list."
+              >
                 <TextArea
                   id="absentees"
                   rows={3}
@@ -448,22 +453,6 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
                       {level.name} — {level.blurb}
                     </option>
                   ))}
-                </Select>
-              </Field>
-
-              <Field
-                label="Model"
-                htmlFor="depth"
-                hint="Standard handles almost every meeting. Use Deep for long, dense or cross-department ones."
-              >
-                <Select
-                  id="depth"
-                  value={inputs.depth}
-                  disabled={busy}
-                  onChange={(e) => set('depth', e.target.value as BriefInputs['depth'])}
-                >
-                  <option value="fast">Standard — GPT-5.6 Luna (~$0.004 a brief)</option>
-                  <option value="deep">Deep — GPT-5.6 Luna Pro (~$0.004 a brief)</option>
                 </Select>
               </Field>
             </div>
