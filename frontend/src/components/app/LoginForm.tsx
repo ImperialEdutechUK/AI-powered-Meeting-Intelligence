@@ -96,7 +96,7 @@ export function LoginForm({ next }: { next: string }) {
           maxLength={60}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. John Smith"
+          placeholder="John Smith"
         />
       </Field>
 
