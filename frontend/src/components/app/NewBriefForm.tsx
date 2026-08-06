@@ -69,15 +69,36 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
   const [stage, setStage] = useState(0);
   const [error, setError] = useState<ErrorResponse['error'] | null>(null);
 
-  const department = useMemo(() => getDepartment(inputs.department), [inputs.department]);
+  const hasDepartment = inputs.departments.length > 0;
+
+  // The first selected department is primary: it drives the theme, footer code
+  // and which library filter the finished brief is filed under. Nothing is
+  // pre-selected, so this falls back to a neutral default purely for styling
+  // (accent color, placeholders) until the user picks one.
+  const department = useMemo(
+    () => getDepartment(inputs.departments[0] ?? 'course-development'),
+    [inputs.departments],
+  );
   const accent = HUES[department.hue];
 
   function set<K extends keyof BriefInputs>(key: K, value: BriefInputs[K]) {
     setInputs((previous) => ({ ...previous, [key]: value }));
   }
 
+  function toggleDepartment(id: BriefInputs['departments'][number]) {
+    setInputs((previous) => {
+      const selected = previous.departments.includes(id);
+      return {
+        ...previous,
+        departments: selected
+          ? previous.departments.filter((d) => d !== id)
+          : [...previous.departments, id],
+      };
+    });
+  }
+
   async function submit() {
-    if (!file || busy) return;
+    if (!file || !hasDepartment || busy) return;
     setBusy(true);
     setError(null);
     setStage(0);
@@ -137,19 +158,25 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
       <Card className="p-5">
         <Kicker>Step 2 · Whose meeting was it?</Kicker>
 
+        <p className="mt-0.5 text-[12px] leading-relaxed text-ink-400">
+          Select one or more. The first one you pick is primary — it sets the
+          document's theme and footer code.
+        </p>
+
         {/*
-          Real radio inputs behind styled labels rather than buttons with
-          role="radio". Native radios bring arrow-key navigation, single-tab-stop
-          grouping and form semantics for free; ARIA-only radios would need all of
-          that hand-written and would be a keyboard trap without it.
+          Real checkbox inputs behind styled labels rather than buttons with
+          role="checkbox". Native checkboxes bring keyboard support and form
+          semantics for free; ARIA-only checkboxes would need all of that
+          hand-written and would be a keyboard trap without it.
         */}
         <fieldset
           className="mt-3 grid grid-cols-2 gap-2 border-0 p-0 sm:grid-cols-4"
           disabled={busy}
         >
-          <legend className="sr-only">Department</legend>
+          <legend className="sr-only">Departments</legend>
           {DEPARTMENT_LIST.map((dept) => {
-            const selected = dept.id === inputs.department;
+            const selected = inputs.departments.includes(dept.id);
+            const isPrimary = selected && inputs.departments[0] === dept.id;
             const tokens = HUES[dept.hue];
             return (
               <label
@@ -164,18 +191,25 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
                 )}
               >
                 <input
-                  type="radio"
-                  name="department"
+                  type="checkbox"
+                  name="departments"
                   value={dept.id}
                   checked={selected}
-                  onChange={() => set('department', dept.id)}
+                  onChange={() => toggleDepartment(dept.id)}
                   className="sr-only"
                 />
-                <span
-                  aria-hidden
-                  className="h-[3px] w-7 rounded-full"
-                  style={{ background: tokens.hex.mid }}
-                />
+                <span className="flex w-full items-start justify-between gap-1">
+                  <span
+                    aria-hidden
+                    className="h-[3px] w-7 rounded-full"
+                    style={{ background: tokens.hex.mid }}
+                  />
+                  {isPrimary ? (
+                    <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white/70">
+                      Primary
+                    </span>
+                  ) : null}
+                </span>
                 <span className="mt-2 w-full">
                   <span
                     className={cn(
@@ -199,9 +233,15 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
           })}
         </fieldset>
 
-        <p className="mt-2.5 text-[12px] leading-relaxed text-ink-400">
-          {department.blurb}
-        </p>
+        {hasDepartment ? (
+          <p className="mt-2.5 text-[12px] leading-relaxed text-ink-400">
+            {department.blurb}
+          </p>
+        ) : (
+          <p className="mt-2.5 text-[12px] font-medium leading-relaxed text-red-700">
+            Select at least one department.
+          </p>
+        )}
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Meeting date" htmlFor="meetingDate">
@@ -473,16 +513,27 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
             ) : (
               <>
                 <p className="text-[13.5px] font-bold text-ink-900">
-                  {file ? 'Ready to generate' : 'Add a transcript to continue'}
+                  {!file
+                    ? 'Add a transcript to continue'
+                    : !hasDepartment
+                      ? 'Select a department to continue'
+                      : 'Ready to generate'}
                 </p>
                 <p className="mt-0.5 text-[12px] text-ink-400">
-                  {department.name} · {inputs.meetingDate || 'no date set'}
+                  {hasDepartment ? department.name : 'No department selected'} ·{' '}
+                  {inputs.meetingDate || 'no date set'}
                 </p>
               </>
             )}
           </div>
 
-          <Button size="lg" onClick={submit} disabled={!file} busy={busy} className="w-full sm:w-auto">
+          <Button
+            size="lg"
+            onClick={submit}
+            disabled={!file || !hasDepartment}
+            busy={busy}
+            className="w-full sm:w-auto"
+          >
             {busy ? 'Generating…' : (
               <>
                 <Sparkles className="size-[18px]" aria-hidden />

@@ -22,7 +22,8 @@ const trimmed = (max: number) =>
     .refine((s) => s.length <= max, { message: `Must be ${max} characters or fewer` });
 
 export const BriefInputsSchema = z.object({
-  department: z.enum(DEPARTMENT_IDS),
+  /** One or more departments; the first is primary (theme, footer code, filing). */
+  departments: z.array(z.enum(DEPARTMENT_IDS)).min(1, 'Select at least one department'),
   meetingType: z.enum(MEETING_TYPES.map((m) => m.id) as [string, ...string[]]),
   confidentiality: z.enum(
     CONFIDENTIALITY_LEVELS.map((c) => c.id) as [string, ...string[]],
@@ -61,7 +62,7 @@ export const BriefInputsSchema = z.object({
 export type BriefInputs = z.infer<typeof BriefInputsSchema>;
 
 export const DEFAULT_BRIEF_INPUTS: BriefInputs = {
-  department: 'course-development',
+  departments: [],
   meetingType: 'team',
   confidentiality: 'internal',
   meetingTitle: '',

@@ -12,7 +12,10 @@ import type { BriefBundle } from './brief-bundle';
 export interface BriefRow {
   id: string;
   title: string;
+  /** Primary department: theme, footer code and filing. */
   department: DepartmentId;
+  /** Every department selected, primary first. */
+  departments: DepartmentId[];
   dateLabel: string;
   meetingDate: string | null;
   groundingScore: number;

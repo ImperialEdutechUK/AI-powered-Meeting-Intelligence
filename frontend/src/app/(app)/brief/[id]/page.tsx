@@ -11,9 +11,9 @@ import { Kicker, Notice, Pill } from '@/components/ui';
 import { frontendEnv } from '@/lib/env';
 import { backendFetch, backendJson } from '@/lib/backend';
 import type { BriefRecord } from '@/lib/api-types';
-import { getDepartment } from '@/lib/departments';
+import { getBundleDepartments } from '@/lib/departments';
 import { HUES } from '@/lib/theme';
-import { formatRelative } from '@/lib/utils';
+import { formatRelative, joinNames } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,8 +80,7 @@ export default async function BriefPage({
   const record = result.record;
 
   const { bundle } = record;
-  const department = getDepartment(bundle.department);
-  const tokens = HUES[department.hue];
+  const departments = getBundleDepartments(bundle);
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:py-8">
@@ -96,18 +95,21 @@ export default async function BriefPage({
 
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <Kicker>{department.name}</Kicker>
+            <Kicker>{joinNames(departments.map((d) => d.name))}</Kicker>
             <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-ink-900">
               {bundle.brief.title}
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Pill
-                className="border-transparent text-white"
-                // Department accent, matching the document itself.
-                style={{ backgroundColor: tokens.hex.base }}
-              >
-                {department.code}
-              </Pill>
+              {departments.map((d) => (
+                <Pill
+                  key={d.id}
+                  className="border-transparent text-white"
+                  // Department accent, matching the document itself.
+                  style={{ backgroundColor: HUES[d.hue].hex.base }}
+                >
+                  {d.code}
+                </Pill>
+              ))}
               <span className="text-[12.5px] text-ink-400">
                 {bundle.brief.dateLabel} · generated {formatRelative(bundle.generatedAt)}
                 {record.createdBy && record.createdBy !== 'unnamed'

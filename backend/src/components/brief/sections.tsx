@@ -34,10 +34,14 @@ import {
 export function DocHero({
   brief,
   department,
+  departments,
   confidentialityLabel,
 }: {
   brief: Brief;
+  /** Primary department: seeds the hero's accent colour. */
   department: Department;
+  /** Every department selected, primary first — named in full in the eyebrow. */
+  departments: Department[];
   confidentialityLabel: string;
 }) {
   const tokens = hueTokens(department.hue);
@@ -60,7 +64,9 @@ export function DocHero({
       />
 
       <div className="relative">
-        <Eyebrow className="text-teal-300">Action Brief · {department.name}</Eyebrow>
+        <Eyebrow className="text-teal-300">
+          Action Brief · {joinNames(departments.map((d) => d.name))}
+        </Eyebrow>
 
         <div
           className={cn(
@@ -723,13 +729,14 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 export function DocFooter({
   brief,
-  department,
+  departments,
   orgName,
   generatedLabel,
   confidentialityLabel,
 }: {
   brief: Brief;
-  department: Department;
+  /** Every department selected, primary first — every code is shown. */
+  departments: Department[];
   orgName: string;
   generatedLabel: string;
   confidentialityLabel: string;
@@ -741,8 +748,10 @@ export function DocFooter({
         style={{ background: 'linear-gradient(135deg, #170E28 0%, #2A1B4A 100%)' }}
       >
         <p className="text-[9.5px] leading-[1.4] text-white/70">
-          <span className="font-bold text-white">{department.code}</span> · {brief.title} ·{' '}
-          {brief.dateLabel}
+          <span className="font-bold text-white">
+            {departments.map((d) => d.code).join('/')}
+          </span>{' '}
+          · {brief.title} · {brief.dateLabel}
         </p>
         {brief.footerTags.length > 0 ? (
           <div className="flex flex-wrap justify-end gap-[5px]">

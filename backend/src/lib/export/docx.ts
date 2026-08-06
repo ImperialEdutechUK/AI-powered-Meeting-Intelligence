@@ -18,7 +18,7 @@ import {
 } from 'docx';
 
 import type { BriefBundle } from '@/lib/brief-bundle';
-import { CONFIDENTIALITY_LEVELS, getDepartment } from '@/lib/departments';
+import { CONFIDENTIALITY_LEVELS, getBundleDepartments, getDepartment } from '@/lib/departments';
 import {
   BADGE_HEX,
   CALLOUTS,
@@ -210,13 +210,17 @@ function panel(
 
 function heroBlock(bundle: BriefBundle, confidentialityLabel: string): Table {
   const { brief } = bundle;
-  const department = getDepartment(bundle.department);
+  // Primary department seeds the accent colour; every selected department is
+  // named in full in the eyebrow line.
+  const departments = getBundleDepartments(bundle);
+  const department = departments[0];
   const accent = HUES[department.hue].hex.mid.replace('#', '');
+  const departmentNames = departments.map((d) => d.name).join(' · ');
 
   const children: Paragraph[] = [
     para(
       [
-        run(`Action Brief · ${department.name}`, {
+        run(`Action Brief · ${departmentNames}`, {
           bold: true,
           size: 15,
           color: accent,
@@ -925,7 +929,9 @@ function provenanceBlock(bundle: BriefBundle, orgName: string, confidentiality: 
 /* ------------------------------------------------------------------------- */
 
 export async function renderDocx(bundle: BriefBundle, orgName: string): Promise<Buffer> {
-  const department = getDepartment(bundle.department);
+  const departments = getBundleDepartments(bundle);
+  const department = departments[0];
+  const departmentCodes = departments.map((d) => d.code).join('/');
   const confidentiality =
     CONFIDENTIALITY_LEVELS.find((c) => c.id === bundle.confidentiality)?.name ?? 'Internal';
 
@@ -997,7 +1003,7 @@ export async function renderDocx(bundle: BriefBundle, orgName: string): Promise<
                 spacing: { before: 120, after: 0 },
                 children: [
                   run(
-                    `${department.code} · ${bundle.brief.title} · ${bundle.brief.dateLabel}  —  page `,
+                    `${departmentCodes} · ${bundle.brief.title} · ${bundle.brief.dateLabel}  —  page `,
                     { size: 15, color: INK.faint },
                   ),
                   new TextRun({

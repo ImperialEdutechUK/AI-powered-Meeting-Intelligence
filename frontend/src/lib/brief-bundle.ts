@@ -81,7 +81,14 @@ export const BriefBundleSchema = z.object({
   /** Bumped when the render contract changes. */
   version: z.literal(1),
   brief: BriefSchema,
+  /** Primary department: theme, footer code and library filing. */
   department: z.enum(DEPARTMENT_IDS),
+  /**
+   * Every department selected at generation time, primary first. Optional so
+   * briefs stored before multi-select existed still validate — they fall back
+   * to `[department]` via `getBundleDepartments`.
+   */
+  departments: z.array(z.enum(DEPARTMENT_IDS)).min(1).optional(),
   meetingType: z.enum(MEETING_TYPES.map((m) => m.id) as [string, ...string[]]),
   confidentiality: z.enum(CONFIDENTIALITY_LEVELS.map((c) => c.id) as [string, ...string[]]),
   transcript: TranscriptFactsSchema,
