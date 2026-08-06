@@ -230,7 +230,13 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
             </Select>
           </Field>
 
-          <Field label="Title" htmlFor="meetingTitle" optional hint="Blank = derived from the transcript.">
+          <Field
+            label="Title"
+            htmlFor="meetingTitle"
+            optional
+            hint="Blank = Derived from the transcript."
+            hintPosition="below"
+          >
             <TextInput
               id="meetingTitle"
               value={inputs.meetingTitle}
@@ -247,7 +253,7 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
               value={inputs.chair}
               maxLength={80}
               disabled={busy}
-              placeholder="e.g. Sadeev Silva"
+              placeholder="e.g. Sophia Turner"
               onChange={(e) => set('chair', e.target.value)}
             />
           </Field>
@@ -299,7 +305,7 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
                 maxLength={4_000}
                 disabled={busy}
                 onChange={(e) => set('roster', e.target.value)}
-                placeholder={'Sadeev Silva — Manager, Innovation & Product Development\nRidma Keshan — Senior Graphic Designer\nYoga Milona — Digital Learning Media Executive'}
+                placeholder={'Emma Wilson - Human Resources\nLiam Carter - Information Technology\nOlivia Bennett - Finance\nNoah Brooks - Marketing'}
               />
             </Field>
 
@@ -329,7 +335,7 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
                   maxLength={600}
                   disabled={busy}
                   onChange={(e) => set('absentees', e.target.value)}
-                  placeholder="Ms. Rushan — on leave"
+                  placeholder="Sophia Turner"
                 />
               </Field>
 
