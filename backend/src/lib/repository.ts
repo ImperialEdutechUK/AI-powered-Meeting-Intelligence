@@ -15,7 +15,10 @@ import { isDepartmentId, type DepartmentId } from './departments';
 export interface BriefRow {
   id: string;
   title: string;
+  /** Primary department: theme, footer code and filing. */
   department: DepartmentId;
+  /** Every department selected, primary first. */
+  departments: DepartmentId[];
   dateLabel: string;
   meetingDate: string | null;
   groundingScore: number;
@@ -35,6 +38,8 @@ const DbRow = z.object({
   id: z.string(),
   title: z.string(),
   department: z.string(),
+  /** Extracted from the `bundle` JSONB column; null for briefs stored before multi-select existed. */
+  departments: z.array(z.string()).nullable(),
   date_label: z.string(),
   meeting_date: z.union([z.string(), z.date(), z.null()]),
   grounding_score: z.number(),
@@ -60,12 +65,15 @@ function dateOnly(value: string | Date | null): string | null {
 
 function toRow(raw: unknown): BriefRow {
   const parsed = DbRow.parse(raw) satisfies DbRowShape;
+  const department = isDepartmentId(parsed.department)
+    ? parsed.department
+    : 'course-development';
+  const departments = (parsed.departments ?? []).filter(isDepartmentId);
   return {
     id: parsed.id,
     title: parsed.title,
-    department: isDepartmentId(parsed.department)
-      ? parsed.department
-      : 'course-development',
+    department,
+    departments: departments.length > 0 ? departments : [department],
     dateLabel: parsed.date_label,
     meetingDate: dateOnly(parsed.meeting_date),
     groundingScore: Number(parsed.grounding_score),
@@ -79,7 +87,7 @@ function toRow(raw: unknown): BriefRow {
 }
 
 const LIST_COLUMNS = `
-  id, title, department, date_label, meeting_date,
+  id, title, department, bundle -> 'departments' AS departments, date_label, meeting_date,
   grounding_score, findings_high, source_file, model, cost_usd,
   created_by, created_at
 `;

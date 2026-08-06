@@ -511,7 +511,7 @@ describe('formatDateLabel', () => {
 describe('BriefInputsSchema', () => {
   it('applies defaults', () => {
     const parsed = BriefInputsSchema.parse({
-      department: 'finance',
+      departments: ['finance'],
       meetingType: 'team',
       confidentiality: 'internal',
     });
@@ -521,7 +521,16 @@ describe('BriefInputsSchema', () => {
   it('rejects an unknown department', () => {
     expect(
       BriefInputsSchema.safeParse({
-        department: 'legal',
+        departments: ['legal'],
+        meetingType: 'team',
+        confidentiality: 'internal',
+      }).success,
+    ).toBe(false);
+  });
+  it('rejects an empty department list', () => {
+    expect(
+      BriefInputsSchema.safeParse({
+        departments: [],
         meetingType: 'team',
         confidentiality: 'internal',
       }).success,
@@ -530,7 +539,7 @@ describe('BriefInputsSchema', () => {
   it('rejects a malformed date', () => {
     expect(
       BriefInputsSchema.safeParse({
-        department: 'finance',
+        departments: ['finance'],
         meetingType: 'team',
         confidentiality: 'internal',
         meetingDate: '27-07-2026',
@@ -540,7 +549,7 @@ describe('BriefInputsSchema', () => {
   it('rejects over-long free text', () => {
     expect(
       BriefInputsSchema.safeParse({
-        department: 'finance',
+        departments: ['finance'],
         meetingType: 'team',
         confidentiality: 'internal',
         focus: 'x'.repeat(2_000),

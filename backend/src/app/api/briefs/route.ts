@@ -160,7 +160,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     const candidate: BriefBundle = {
       version: BUNDLE_VERSION,
       brief,
-      department: inputs.department,
+      department: inputs.departments[0] ?? 'course-development',
+      departments: inputs.departments,
       meetingType: inputs.meetingType,
       confidentiality: inputs.confidentiality,
       transcript: {

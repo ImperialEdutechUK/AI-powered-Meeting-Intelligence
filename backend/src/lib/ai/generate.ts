@@ -95,11 +95,13 @@ export function buildPromptContext(
   transcript: Transcript,
   truncated: boolean,
 ): PromptContext {
-  const department = getDepartment(inputs.department);
+  const departments = inputs.departments.map(getDepartment);
+  const department = departments[0] ?? getDepartment('course-development');
   const dateLabel =
     formatDateLabel(inputs.meetingDate) || formatDateLabel(todayIso()) || '';
   return {
     department,
+    departments,
     inputs,
     roster: parseRoster(inputs.roster),
     dateLabel,

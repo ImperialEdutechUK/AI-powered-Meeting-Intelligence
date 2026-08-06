@@ -30,7 +30,7 @@ beforeAll(() => {
 
 const INPUTS: BriefInputs = {
   ...DEFAULT_BRIEF_INPUTS,
-  department: 'course-development',
+  departments: ['course-development'],
   meetingType: 'team',
   meetingDate: '2026-07-27',
   chair: 'Sadeev Silva',
@@ -276,7 +276,7 @@ describe('full bundle assembly', () => {
     const bundle: BriefBundle = {
       version: BUNDLE_VERSION,
       brief,
-      department: INPUTS.department,
+      department: INPUTS.departments[0] ?? 'course-development',
       meetingType: INPUTS.meetingType,
       confidentiality: INPUTS.confidentiality,
       transcript: {

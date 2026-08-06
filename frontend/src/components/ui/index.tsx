@@ -165,6 +165,7 @@ const CONTROL_BASE =
 export function Field({
   label,
   hint,
+  hintPosition = 'above',
   optional,
   htmlFor,
   children,
@@ -173,6 +174,7 @@ export function Field({
 }: {
   label: string;
   hint?: string;
+  hintPosition?: 'above' | 'below';
   optional?: boolean;
   htmlFor: string;
   children: ReactNode;
@@ -208,12 +210,17 @@ export function Field({
           <span className="text-[11px] font-medium text-ink-400">optional</span>
         ) : null}
       </label>
-      {hint ? (
+      {hint && hintPosition === 'above' ? (
         <p id={hintId} className="mt-1 text-[11.5px] leading-relaxed text-ink-400">
           {hint}
         </p>
       ) : null}
       <div className="mt-1.5">{control}</div>
+      {hint && hintPosition === 'below' ? (
+        <p id={hintId} className="mt-1.5 text-[11.5px] leading-relaxed text-ink-400">
+          {hint}
+        </p>
+      ) : null}
       {error ? (
         <p id={errorId} role="alert" className="mt-1.5 text-[11.5px] font-medium text-red-700">
           {error}

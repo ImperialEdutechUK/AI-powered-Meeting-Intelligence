@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { AlertTriangle, FileUp, LibraryBig, Search } from 'lucide-react';
 
 import { Card, EmptyState, Kicker, Notice, Pill, TextInput } from '@/components/ui';
-import { DEPARTMENT_LIST, getDepartment, isDepartmentId } from '@/lib/departments';
+import { DEPARTMENT_LIST, getDepartment, getBundleDepartments, isDepartmentId } from '@/lib/departments';
 import { HUES } from '@/lib/theme';
 import { backendJson } from '@/lib/backend';
 import type { BriefList, BriefStats } from '@/lib/api-types';
@@ -161,6 +161,7 @@ export default async function LibraryPage({
           {data.rows.map((row) => {
             const dept = getDepartment(row.department);
             const tokens = HUES[dept.hue];
+            const rowDepartments = getBundleDepartments(row);
             return (
               <Card as="li" key={row.id} className="overflow-hidden transition-shadow hover:shadow-[0_2px_4px_rgba(15,6,22,0.05),0_18px_40px_-22px_rgba(15,6,22,0.28)]">
                 <Link href={`/brief/${row.id}`} className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900">
@@ -171,12 +172,17 @@ export default async function LibraryPage({
                   />
                   <div className="p-4">
                     <div className="flex items-center justify-between gap-2">
-                      <Pill
-                        className="border-transparent text-[10px] uppercase tracking-[0.1em] text-white"
-                        style={{ backgroundColor: tokens.hex.base }}
-                      >
-                        {dept.code}
-                      </Pill>
+                      <div className="flex flex-wrap gap-1">
+                        {rowDepartments.map((d) => (
+                          <Pill
+                            key={d.id}
+                            className="border-transparent text-[10px] uppercase tracking-[0.1em] text-white"
+                            style={{ backgroundColor: HUES[d.hue].hex.base }}
+                          >
+                            {d.code}
+                          </Pill>
+                        ))}
+                      </div>
                       {row.findingsHigh > 0 ? (
                         <Pill className="border-red-200 bg-red-50 text-red-700">
                           <AlertTriangle className="size-3" aria-hidden />

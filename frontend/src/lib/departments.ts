@@ -18,6 +18,8 @@ export const DEPARTMENT_IDS = [
   'operations',
   'academic',
   'course-development',
+  'customer-service',
+  'it',
 ] as const;
 
 export type DepartmentId = (typeof DEPARTMENT_IDS)[number];
@@ -30,7 +32,9 @@ export type Hue =
   | 'pink'
   | 'blue'
   | 'emerald'
-  | 'indigo';
+  | 'indigo'
+  | 'rose'
+  | 'cyan';
 
 export interface Department {
   id: DepartmentId;
@@ -230,6 +234,46 @@ export const DEPARTMENTS: Record<DepartmentId, Department> = {
       'module',
     ],
   },
+  'customer-service': {
+    id: 'customer-service',
+    name: 'Customer Service',
+    code: 'CS',
+    hue: 'rose',
+    blurb: 'Support tickets, complaints, escalations and CSAT.',
+    suggestedTracks: ['Support & Tickets', 'Escalations & Complaints', 'CSAT & Feedback'],
+    lexicon: [
+      'ticket',
+      'complaint',
+      'escalation',
+      'CSAT',
+      'SLA',
+      'refund',
+      'live chat',
+      'call centre',
+      'resolution',
+      'feedback',
+    ],
+  },
+  it: {
+    id: 'it',
+    name: 'IT',
+    code: 'IT',
+    hue: 'cyan',
+    blurb: 'Infrastructure, support tickets, security and systems.',
+    suggestedTracks: ['Infrastructure & Systems', 'Support & Access', 'Security & Compliance'],
+    lexicon: [
+      'server',
+      'downtime',
+      'patch',
+      'firewall',
+      'VPN',
+      'helpdesk',
+      'incident',
+      'backup',
+      'access request',
+      'outage',
+    ],
+  },
 };
 
 export const DEPARTMENT_LIST: Department[] = DEPARTMENT_IDS.map((id) => DEPARTMENTS[id]);
@@ -240,6 +284,23 @@ export function isDepartmentId(value: unknown): value is DepartmentId {
 
 export function getDepartment(id: string): Department {
   return isDepartmentId(id) ? DEPARTMENTS[id] : DEPARTMENTS['course-development'];
+}
+
+/**
+ * Every department a brief was filed under, primary first.
+ *
+ * `departments` is optional on the bundle so briefs stored before multi-select
+ * existed still read back fine — they fall back to their single `department`.
+ */
+export function getBundleDepartments(bundle: {
+  department: DepartmentId;
+  departments?: DepartmentId[];
+}): [Department, ...Department[]] {
+  const ids: [DepartmentId, ...DepartmentId[]] =
+    bundle.departments && bundle.departments.length > 0
+      ? (bundle.departments as [DepartmentId, ...DepartmentId[]])
+      : [bundle.department];
+  return ids.map((id) => DEPARTMENTS[id]) as [Department, ...Department[]];
 }
 
 /** Meeting shapes change the tone and the section mix of the brief. */

@@ -72,13 +72,29 @@ test.describe('authenticated', () => {
     await expect(page.getByRole('button', { name: /Generate brief/i })).toBeDisabled();
   });
 
-  test('department selection is keyboard operable', async ({ page }) => {
-    const finance = page.locator('input[name=department][value=finance]');
-    await finance.focus();
-    await page.keyboard.press('ArrowRight');
-    await expect(
-      page.locator('input[name=department][value=marketing]'),
-    ).toBeChecked();
+  test('no department is preselected, multiple can be picked, and at least one is required', async ({
+    page,
+  }) => {
+    const financeCheckbox = page.locator('input[name=departments][value=finance]');
+    const marketingCheckbox = page.locator('input[name=departments][value=marketing]');
+    const generateButton = page.getByRole('button', { name: /Generate brief/i });
+
+    await expect(financeCheckbox).not.toBeChecked();
+    await expect(marketingCheckbox).not.toBeChecked();
+    await expect(page.getByText('Select at least one department.')).toBeVisible();
+    await expect(generateButton).toBeDisabled();
+
+    await financeCheckbox.check({ force: true });
+    await marketingCheckbox.check({ force: true });
+    await expect(financeCheckbox).toBeChecked();
+    await expect(marketingCheckbox).toBeChecked();
+    await expect(page.getByText('Select at least one department.')).toBeHidden();
+
+    // Free to deselect all the way back down to none.
+    await financeCheckbox.uncheck({ force: true });
+    await marketingCheckbox.uncheck({ force: true });
+    await expect(page.getByText('Select at least one department.')).toBeVisible();
+    await expect(generateButton).toBeDisabled();
   });
 
   test('the context panel discloses and collapses', async ({ page }) => {

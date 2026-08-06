@@ -1,4 +1,4 @@
-import { CONFIDENTIALITY_LEVELS, getDepartment } from '@/lib/departments';
+import { CONFIDENTIALITY_LEVELS, getBundleDepartments } from '@/lib/departments';
 import { rotateHue } from '@/lib/theme';
 import type { BriefBundle } from '@/lib/brief-bundle';
 import { formatTimestamp } from '@/lib/utils';
@@ -39,7 +39,10 @@ export function BriefDocument({
   showParticipation?: boolean;
 }) {
   const { brief, transcript } = bundle;
-  const department = getDepartment(bundle.department);
+  // Primary department drives the theme (seed hue) and the per-track owner
+  // code; the full list is shown wherever the document names its department(s).
+  const departments = getBundleDepartments(bundle);
+  const department = departments[0];
   const seed = department.hue;
 
   const confidentiality = CONFIDENTIALITY_LEVELS.find(
@@ -52,6 +55,7 @@ export function BriefDocument({
       <DocHero
         brief={brief}
         department={department}
+        departments={departments}
         confidentialityLabel={confidentialityLabel}
       />
 
@@ -78,7 +82,7 @@ export function BriefDocument({
 
       <DocFooter
         brief={brief}
-        department={department}
+        departments={departments}
         orgName={orgName}
         generatedLabel={`Generated ${formatTimestamp(bundle.generatedAt)}`}
         confidentialityLabel={confidentialityLabel}

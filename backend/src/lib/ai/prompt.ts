@@ -148,7 +148,10 @@ function block(label: string, value: string): string {
 }
 
 export interface PromptContext {
+  /** Primary department: drives the theme, footer code and fallback title. */
   department: Department;
+  /** Every department selected, primary first. Lexicon and tracks are merged from all of these. */
+  departments: Department[];
   inputs: BriefInputs;
   roster: RosterEntry[];
   dateLabel: string;
@@ -159,14 +162,18 @@ export interface PromptContext {
 
 /** The meeting-specific briefing block, shared by the single-pass and reduce prompts. */
 export function buildContextBlock(ctx: PromptContext): string {
-  const { department, inputs, roster, dateLabel, stats } = ctx;
+  const { department, departments, inputs, roster, dateLabel, stats } = ctx;
   const lines: string[] = [];
 
   const meetingType = MEETING_TYPES.find((m) => m.id === inputs.meetingType);
   const confidentiality = CONFIDENTIALITY_LEVELS.find((c) => c.id === inputs.confidentiality);
 
   lines.push('## Meeting context');
-  lines.push(`- Department: ${department.name} (code ${department.code})`);
+  lines.push(
+    departments.length > 1
+      ? `- Departments: ${departments.map((d) => d.name).join(', ')} (footer code ${department.code})`
+      : `- Department: ${department.name} (code ${department.code})`,
+  );
   lines.push(`- Meeting type: ${meetingType?.name ?? inputs.meetingType} — ${meetingType?.blurb ?? ''}`);
   lines.push(`- Date to print in the document: ${dateLabel}`);
   if (inputs.meetingTitle) {
@@ -183,13 +190,15 @@ export function buildContextBlock(ctx: PromptContext): string {
     }.`,
   );
 
+  const suggestedTracks = Array.from(new Set(departments.flatMap((d) => d.suggestedTracks)));
   lines.push(
-    `- Suggested workstream groupings for this department (use only if they fit): ${department.suggestedTracks.join('; ')}.`,
+    `- Suggested workstream groupings for ${departments.length > 1 ? 'these departments' : 'this department'} (use only if they fit): ${suggestedTracks.join('; ')}.`,
   );
 
+  const departmentLexicon = Array.from(new Set(departments.flatMap((d) => d.lexicon)));
   const glossaryTerms = [
     ...parseTermList(inputs.glossary, 40),
-    ...department.lexicon,
+    ...departmentLexicon,
   ].slice(0, 60);
   if (glossaryTerms.length > 0) {
     lines.push(

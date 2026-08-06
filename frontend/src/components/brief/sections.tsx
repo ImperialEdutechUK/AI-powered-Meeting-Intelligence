@@ -1,7 +1,6 @@
 import { cn, joinNames } from '@/lib/utils';
 import type { Department, Hue } from '@/lib/departments';
 import {
-  badgeStyle,
   callout as calloutTokens,
   hue as hueTokens,
   rotateHue,
@@ -17,7 +16,6 @@ import type { TranscriptFacts } from '@/lib/brief-bundle';
 import { formatDuration } from '@/lib/transcript/cues';
 import { sharePctLabel } from '@/lib/transcript/stats';
 import {
-  Badge,
   Chip,
   Eyebrow,
   MetaChip,
@@ -34,10 +32,14 @@ import {
 export function DocHero({
   brief,
   department,
+  departments,
   confidentialityLabel,
 }: {
   brief: Brief;
+  /** Primary department: seeds the hero's accent colour. */
   department: Department;
+  /** Every department selected, primary first — named in full in the eyebrow. */
+  departments: Department[];
   confidentialityLabel: string;
 }) {
   const tokens = hueTokens(department.hue);
@@ -60,7 +62,9 @@ export function DocHero({
       />
 
       <div className="relative">
-        <Eyebrow className="text-teal-300">Action Brief · {department.name}</Eyebrow>
+        <Eyebrow className="text-teal-300">
+          Action Brief · {joinNames(departments.map((d) => d.name))}
+        </Eyebrow>
 
         <div
           className={cn(
@@ -550,23 +554,20 @@ export function DocOwners({ brief, seed }: { brief: Brief; seed: Hue }) {
 
       {brief.owners.length > 0 ? (
         <div className="mt-[10px] grid grid-cols-2 gap-x-[9px] gap-y-[9px]">
-          {brief.owners.map((owner, index) => (
+          {brief.owners.map((owner) => (
             <div
               key={owner.name}
-              className="doc-keep flex gap-[9px] rounded-[9px] bg-white px-[11px] py-[10px] shadow-[0_1px_2px_rgba(15,6,22,0.05)]"
+              className="doc-keep rounded-[9px] bg-white px-[11px] py-[10px] shadow-[0_1px_2px_rgba(15,6,22,0.05)]"
             >
-              <Badge className={badgeStyle(index)}>{owner.badge}</Badge>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold leading-[1.3] text-ink-900">{owner.name}</p>
-                {owner.role ? (
-                  <p className="mt-[1px] text-[8.5px] font-semibold leading-[1.35] text-ink-400">
-                    {owner.role}
-                  </p>
-                ) : null}
-                <p className="mt-[4px] text-[9.5px] leading-[1.5] text-ink-600">
-                  {owner.assignment}
+              <p className="text-[11px] font-bold leading-[1.3] text-ink-900">{owner.name}</p>
+              {owner.role ? (
+                <p className="mt-[1px] text-[8.5px] font-semibold leading-[1.35] text-ink-400">
+                  {owner.role}
                 </p>
-              </div>
+              ) : null}
+              <p className="mt-[4px] text-[9.5px] leading-[1.5] text-ink-600">
+                {owner.assignment}
+              </p>
             </div>
           ))}
         </div>
@@ -723,13 +724,14 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 export function DocFooter({
   brief,
-  department,
+  departments,
   orgName,
   generatedLabel,
   confidentialityLabel,
 }: {
   brief: Brief;
-  department: Department;
+  /** Every department selected, primary first — every code is shown. */
+  departments: Department[];
   orgName: string;
   generatedLabel: string;
   confidentialityLabel: string;
@@ -741,8 +743,10 @@ export function DocFooter({
         style={{ background: 'linear-gradient(135deg, #170E28 0%, #2A1B4A 100%)' }}
       >
         <p className="text-[9.5px] leading-[1.4] text-white/70">
-          <span className="font-bold text-white">{department.code}</span> · {brief.title} ·{' '}
-          {brief.dateLabel}
+          <span className="font-bold text-white">
+            {departments.map((d) => d.code).join('/')}
+          </span>{' '}
+          · {brief.title} · {brief.dateLabel}
         </p>
         {brief.footerTags.length > 0 ? (
           <div className="flex flex-wrap justify-end gap-[5px]">
