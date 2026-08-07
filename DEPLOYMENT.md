@@ -71,6 +71,7 @@ door code: share it internally, change it when someone leaves.
 | `OPENROUTER_MODEL_DEEP` | `openai/gpt-5.6-luna-pro` | The "Deep" toggle on the form |
 | `MAX_UPLOAD_MB` | `25` | Upload ceiling |
 | `RATE_LIMIT_PER_HOUR` | `40` | Briefs per IP per hour |
+| `PDF_MAX_CONCURRENT_RENDERS` | `2` | Chromium instances the PDF renderer may run at once; extra requests queue for up to 60s instead of piling up and exhausting memory |
 | `SESSION_HOURS` | `72` | How long a sign-in lasts |
 | `DATABASE_SSL` | `false` | Set `true` only for external managed Postgres |
 | `CHROMIUM_PATH` | `/usr/bin/chromium` | Already correct inside the image |

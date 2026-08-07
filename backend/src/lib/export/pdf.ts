@@ -1,6 +1,7 @@
 import { access, constants } from 'node:fs/promises';
 import type { Browser } from 'puppeteer-core';
 import { selfOrigin, serverEnv } from '@/lib/env';
+import { withRenderSlot } from '@/lib/export/pdf-limiter';
 
 /**
  * PDF rendering.
@@ -81,7 +82,12 @@ export interface RenderPdfOptions {
   timeoutMs?: number;
 }
 
-export async function renderPdf(options: RenderPdfOptions): Promise<Buffer> {
+/** Acquires a render slot (see `pdf-limiter.ts`) before launching Chromium. */
+export function renderPdf(options: RenderPdfOptions): Promise<Buffer> {
+  return withRenderSlot(() => renderPdfNow(options));
+}
+
+async function renderPdfNow(options: RenderPdfOptions): Promise<Buffer> {
   const { path, cookie, timeoutMs = 90_000 } = options;
   const executablePath = await resolveExecutable();
   const { default: puppeteer } = await import('puppeteer-core');
