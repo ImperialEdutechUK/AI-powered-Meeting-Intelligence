@@ -70,6 +70,13 @@ const schema = z.object({
 
   /** Generations allowed per IP per hour. */
   RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(1).max(10_000).default(40),
+
+  /**
+   * Chromium instances the PDF renderer may run at once. Each one peaks around
+   * 350-450MB (see `railway.toml`), so this should stay low on a 1GB instance.
+   * Extra requests queue briefly rather than launching unbounded browsers.
+   */
+  PDF_MAX_CONCURRENT_RENDERS: z.coerce.number().int().min(1).max(20).default(2),
 });
 
 export type ServerEnv = z.infer<typeof schema>;
