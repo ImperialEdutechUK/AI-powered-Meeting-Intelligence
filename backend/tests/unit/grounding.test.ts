@@ -253,7 +253,7 @@ describe('checkGrounding', () => {
 
   it('accepts a person only mentioned by others, never a speaker', async () => {
     const transcript = await load();
-    // "Ms. Rushan" is named in the dialogue but never speaks.
+    // "Mr. Rushan" is named in the dialogue but never speaks.
     const report = checkGrounding({
       brief: makeBrief({
         owners: [{ name: 'Rushan', assignment: 'Return and restore card access.' }],
