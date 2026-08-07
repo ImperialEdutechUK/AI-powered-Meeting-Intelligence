@@ -9,8 +9,6 @@ import { ingestTranscript } from '@/lib/transcript';
 import { generateBrief } from '@/lib/ai/generate';
 import { checkGrounding } from '@/lib/qa/grounding';
 import { BUNDLE_VERSION, BriefBundleSchema, type BriefBundle } from '@/lib/brief-bundle';
-import { createBrief, listBriefs } from '@/lib/repository';
-import { isDepartmentId } from '@/lib/departments';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,36 +16,14 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 600;
 
 /* ------------------------------------------------------------------------- */
-/* GET — list                                                                */
-/* ------------------------------------------------------------------------- */
-
-export async function GET(request: Request): Promise<NextResponse> {
-  try {
-    if (!(await currentSession())) return unauthorised();
-
-    const url = new URL(request.url);
-    const departmentParam = url.searchParams.get('department') ?? 'all';
-    const department =
-      departmentParam === 'all' || isDepartmentId(departmentParam)
-        ? departmentParam
-        : 'all';
-
-    const result = await listBriefs({
-      department,
-      search: url.searchParams.get('q') ?? '',
-      limit: Number(url.searchParams.get('limit') ?? 30),
-      offset: Number(url.searchParams.get('offset') ?? 0),
-    });
-
-    return ok(result);
-  } catch (error) {
-    return errorResponse(error, 'briefs/list');
-  }
-}
-
-/* ------------------------------------------------------------------------- */
 /* POST — generate                                                           */
 /* ------------------------------------------------------------------------- */
+/*
+ * Nothing here is persisted. The finished bundle is validated and handed
+ * straight back to the caller; the browser holds it for the rest of the
+ * session (preview, PDF/DOCX export) and it is gone once the tab closes.
+ * There is no "library" of past documents and no database row per brief.
+ */
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
@@ -180,13 +156,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       generatedAt: new Date().toISOString(),
     };
 
-    // Validate before persisting: a bad row must never reach the database.
+    // Validate before handing it back: a bad bundle must never reach the client.
     const bundle = BriefBundleSchema.safeParse(candidate);
     if (!bundle.success) {
       return fail(
         500,
         'BUNDLE_INVALID',
-        'The brief was generated but failed its final integrity check. Nothing was saved.',
+        'The brief was generated but failed its final integrity check. Nothing was returned.',
         bundle.error.issues
           .slice(0, 5)
           .map((i) => `${i.path.join('.')}: ${i.message}`)
@@ -194,13 +170,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    const id = await createBrief({
-      bundle: bundle.data,
-      meetingDate: inputs.meetingDate || null,
-      createdBy: session.who || 'unnamed',
-    });
-
-    return ok({ id, grounding, telemetry, warnings: transcript.warnings }, { status: 201 });
+    return ok({ bundle: bundle.data, warnings: transcript.warnings }, { status: 201 });
   } catch (error) {
     return errorResponse(error, 'briefs/create');
   }

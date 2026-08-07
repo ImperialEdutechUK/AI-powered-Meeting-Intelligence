@@ -26,8 +26,10 @@ import {
   todayIso,
   type BriefInputs,
 } from '@/lib/brief-inputs';
+import type { BriefBundle } from '@/lib/brief-bundle';
 import { HUES } from '@/lib/theme';
 import { cn } from '@/lib/utils';
+import { storePendingBrief } from '@/lib/pending-brief';
 
 /**
  * The generate screen.
@@ -40,7 +42,7 @@ import { cn } from '@/lib/utils';
 
 interface CreateResponse {
   ok: true;
-  data: { id: string; warnings: string[] };
+  data: { bundle: BriefBundle; warnings: string[] };
 }
 
 interface ErrorResponse {
@@ -71,10 +73,9 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
 
   const hasDepartment = inputs.departments.length > 0;
 
-  // The first selected department is primary: it drives the theme, footer code
-  // and which library filter the finished brief is filed under. Nothing is
-  // pre-selected, so this falls back to a neutral default purely for styling
-  // (accent color, placeholders) until the user picks one.
+  // The first selected department is primary: it drives the theme and footer
+  // code. Nothing is pre-selected, so this falls back to a neutral default
+  // purely for styling (accent color, placeholders) until the user picks one.
   const department = useMemo(
     () => getDepartment(inputs.departments[0] ?? 'course-development'),
     [inputs.departments],
@@ -127,7 +128,8 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
         return;
       }
 
-      router.push(`/brief/${payload.data.id}`);
+      storePendingBrief(payload.data.bundle);
+      router.push('/brief/preview');
     } catch {
       setError({
         code: 'NETWORK',

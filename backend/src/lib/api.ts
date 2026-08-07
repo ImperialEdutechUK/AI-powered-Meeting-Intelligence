@@ -4,7 +4,6 @@ import { TranscriptError } from './transcript/types';
 import { GenerationError } from './ai/generate';
 import { OpenRouterError } from './ai/openrouter';
 import { PdfError } from './export/pdf';
-import { BriefCorruptError, BriefNotFoundError } from './repository';
 
 /**
  * Uniform API responses.
@@ -75,19 +74,6 @@ export function errorResponse(error: unknown, context: string): NextResponse {
   if (error instanceof PdfError) {
     const status = error.code === 'NO_CHROMIUM' ? 501 : error.code === 'TIMEOUT' ? 504 : 500;
     return fail(status, `PDF_${error.code}`, error.message, error.detail);
-  }
-
-  if (error instanceof BriefNotFoundError) {
-    return fail(404, 'NOT_FOUND', 'That brief no longer exists.');
-  }
-
-  if (error instanceof BriefCorruptError) {
-    return fail(
-      500,
-      'BRIEF_CORRUPT',
-      'That brief was saved by an incompatible version and cannot be opened. Regenerate it from the transcript.',
-      error.detail,
-    );
   }
 
   if (error instanceof EnvError) {
