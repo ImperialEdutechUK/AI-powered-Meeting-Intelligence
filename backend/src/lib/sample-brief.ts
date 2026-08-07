@@ -41,7 +41,7 @@ export const SAMPLE_BUNDLE: BriefBundle = {
       {
         tone: 'critical',
         title: 'Account suspensions — blocking multiple projects, Sadeev to resolve today',
-        body: 'Google, Freepik and Adobe accounts were suspended in the absence of Ms. Rushan, who manages the payment cards. Sadeev committed to clearing all suspended accounts and overdue subscriptions within the day. Projects that depend on these accounts are on hold until access is restored.',
+        body: 'Google, Freepik and Adobe accounts were suspended in the absence of Mr. Rushan, who manages the payment cards. Sadeev committed to clearing all suspended accounts and overdue subscriptions within the day. Projects that depend on these accounts are on hold until access is restored.',
       },
       {
         tone: 'warning',
@@ -254,7 +254,7 @@ export const SAMPLE_BUNDLE: BriefBundle = {
 
     openQuestions: [
       'What is the realistic completion date for chemistry and physics once the subject breakdown is done?',
-      'Who covers payment card access when Ms. Rushan is unavailable?',
+      'Who covers payment card access when Mr. Rushan is unavailable?',
     ],
 
     owners: [

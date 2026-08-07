@@ -103,7 +103,7 @@ const GOOD_JSON = JSON.stringify({
   ],
   decisions: [{ text: 'Monthly diagram subscription, not annual.', owner: 'Malsha Nirmani', status: 'agreed' }],
   risks: [{ text: 'Science video timeline is impractical.', severity: 'high', owner: 'Malsha Nirmani' }],
-  openQuestions: ['Who covers card access when Ms. Rushan is away?'],
+  openQuestions: ['Who covers card access when Mr. Rushan is away?'],
   owners: [
     { name: 'Sadeev Silva', badge: 'MGT', role: 'Manager', assignment: 'Clear the suspended accounts today.' },
     { name: 'Ridma Keshan', badge: 'DES', role: 'Senior Graphic Designer', assignment: 'Finish the prospectus.' },
