@@ -19,7 +19,7 @@ const schema = z.object({
   BACKEND_URL: z.string().url().default('http://127.0.0.1:3001'),
 
   /** Branding shown in the app chrome and login screen. */
-  ORG_NAME: z.string().default('Imperial Learning'),
+  ORG_NAME: z.string().default('Imperial Edutech'),
   ORG_SHORT: z.string().default('IL'),
 
   /** Upload ceiling, megabytes — shown to the user before they pick a file. */

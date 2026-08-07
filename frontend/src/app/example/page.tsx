@@ -34,7 +34,7 @@ export default function ExamplePage() {
       </div>
 
       <DocumentFrame>
-        <BriefDocument bundle={SAMPLE_BUNDLE} orgName="Imperial Learning" />
+        <BriefDocument bundle={SAMPLE_BUNDLE} orgName="Imperial Edutech" />
       </DocumentFrame>
     </main>
   );

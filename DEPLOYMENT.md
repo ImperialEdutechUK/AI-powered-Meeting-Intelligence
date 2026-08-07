@@ -46,7 +46,7 @@ DATABASE_URL=${{Postgres.DATABASE_URL}}
 OPENROUTER_API_KEY=sk-or-v1-your-real-key
 APP_PASSCODE=pick-something-memorable-not-guessable
 SESSION_SECRET=paste-64-hex-characters-here
-ORG_NAME=Imperial Learning
+ORG_NAME=Imperial Edutech
 ORG_SHORT=IL
 ```
 
@@ -93,7 +93,7 @@ or its public URL if you exposed one. The frontend needs it next.
 
 ```env
 BACKEND_URL=http://actionbrief-backend.railway.internal:3001
-ORG_NAME=Imperial Learning
+ORG_NAME=Imperial Edutech
 ORG_SHORT=IL
 ```
 
