@@ -59,7 +59,7 @@ const schema = z.object({
   SESSION_HOURS: z.coerce.number().int().min(1).max(720).default(72),
 
   /** Branding shown in the app chrome and document footers. */
-  ORG_NAME: z.string().default('Imperial Learning'),
+  ORG_NAME: z.string().default('Imperial Edutech'),
   ORG_SHORT: z.string().default('IL'),
 
   /** Chromium executable used for PDF rendering. */

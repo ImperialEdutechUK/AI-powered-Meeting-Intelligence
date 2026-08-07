@@ -4,7 +4,7 @@ Turns a Microsoft Teams meeting transcript into a designed, department-branded
 action brief — the decisions, owners, blockers and dates pulled out and laid out
 on one A4 document that someone will actually read.
 
-Built for the eight departments at Imperial Learning: Finance, Marketing, Sales,
+Built for the eight departments at Imperial Edutech: Finance, Marketing, Sales,
 Human Resources, Upper Management, Operations, Academic and Course Development.
 Each gets its own accent palette and its own workstream vocabulary, so a brief is
 recognisable at a glance.

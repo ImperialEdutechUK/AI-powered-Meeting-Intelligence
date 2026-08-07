@@ -21,7 +21,7 @@ describe('renderDocx', () => {
   });
 
   it('produces a valid, non-trivial .docx', async () => {
-    const buffer = await renderDocx(SAMPLE_BUNDLE, 'Imperial Learning');
+    const buffer = await renderDocx(SAMPLE_BUNDLE, 'Imperial Edutech');
     writeFileSync(join(ARTIFACTS, 'sample.docx'), buffer);
 
     // A DOCX is a zip: check the local file header magic.
@@ -49,7 +49,7 @@ describe('renderDocx', () => {
       },
       transcript: { ...SAMPLE_BUNDLE.transcript, speakers: [] },
     };
-    const buffer = await renderDocx(minimal, 'Imperial Learning');
+    const buffer = await renderDocx(minimal, 'Imperial Edutech');
     expect(buffer.subarray(0, 2).toString('latin1')).toBe('PK');
   });
 });
