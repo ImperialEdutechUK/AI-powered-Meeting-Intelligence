@@ -857,60 +857,48 @@ function participationTable(bundle: BriefBundle): (Paragraph | Table)[] {
   ];
 }
 
-function provenanceBlock(bundle: BriefBundle, orgName: string, confidentiality: string): Table[] {
-  const findings = bundle.grounding.findings.filter((f) => f.severity !== 'low');
+/**
+ * Closing footer block, matching `DocFooter` (the shared PDF/preview
+ * component) rather than a Word-only "provenance" panel: a department/title/
+ * date bar over an org/confidentiality/disclaimer bar.
+ */
+function docFooterBlock(
+  bundle: BriefBundle,
+  orgName: string,
+  confidentialityLabel: string,
+  departmentCodes: string,
+): Table[] {
+  const { brief } = bundle;
+  const generatedLabel = `Generated ${formatTimestamp(bundle.generatedAt)}`;
 
-  const children: Paragraph[] = [
-    para([run('Provenance & verification', { bold: true, size: 18, color: INK.dark })], {
-      spacingAfter: 80,
-    }),
-    para(
-      [
-        run(
-          `${orgName} · ${confidentiality} · Generated ${formatTimestamp(bundle.generatedAt)} from "${
-            bundle.transcript.fileName
-          }" using ${bundle.telemetry.model}. Automated checks: ${
-            bundle.grounding.checked.numbers
-          } figures and ${bundle.grounding.checked.people} names verified against the transcript (score ${
-            bundle.grounding.score
-          }%).`,
-          { size: 16, color: INK.muted },
-        ),
-      ],
-      { spacingAfter: 80 },
-    ),
+  const topRun = [
+    run(`${departmentCodes}`, { bold: true, size: 15, color: 'FFFFFF' }),
+    run(` · ${brief.title} · ${brief.dateLabel}`, { size: 15, color: 'BEB2DE' }),
   ];
-
-  if (findings.length > 0) {
-    children.push(
-      para([run(`${findings.length} item(s) need checking:`, { bold: true, size: 16, color: '991B1B' })], {
-        spacingAfter: 40,
-      }),
-    );
-    for (const finding of findings.slice(0, 8)) {
-      children.push(
-        new Paragraph({
-          children: [run(`${finding.location}: ${finding.message}`, { size: 15, color: INK.muted })],
-          bullet: { level: 0 },
-          spacing: { after: 30, line: 260 },
-        }),
-      );
-    }
+  if (brief.footerTags.length > 0) {
+    topRun.push(run(`   ${brief.footerTags.join('   ·   ')}`, { size: 13, color: 'D8CEF0' }));
   }
 
-  children.push(
-    para(
-      [
-        run(
-          `Written by an AI model from the meeting transcript. Verify anything consequential against the recording before acting on it. Relative dates ("today", "tomorrow", "ASAP") are as stated in the meeting on ${bundle.brief.dateLabel}.`,
-          { size: 15, color: INK.faint, italics: true },
-        ),
-      ],
-      { spacingBefore: 60, spacingAfter: 0 },
-    ),
+  const topBar = panel([para(topRun, { spacingAfter: 0 })], INK.dark);
+  const bottomBar = panel(
+    [
+      para(
+        [
+          run(
+            `${orgName} · ${confidentialityLabel} · ${generatedLabel}. Written by an AI model ` +
+              'from the meeting transcript and checked against it automatically. Verify anything ' +
+              'consequential against the recording before acting on it. Relative dates ' +
+              `("today", "tomorrow", "ASAP") are as stated in the meeting on ${brief.dateLabel}.`,
+            { size: 15, color: '9C8FC2' },
+          ),
+        ],
+        { spacingAfter: 0 },
+      ),
+    ],
+    INK.darkest,
   );
 
-  return [panel(children, 'F5F3FB')];
+  return [topBar, bottomBar];
 }
 
 /* ------------------------------------------------------------------------- */
@@ -954,7 +942,7 @@ export async function renderDocx(bundle: BriefBundle, orgName: string): Promise<
   children.push(...participationTable(bundle));
 
   children.push(para([run('', { size: 12 })], { spacingBefore: 320, spacingAfter: 0 }));
-  children.push(...provenanceBlock(bundle, orgName, confidentiality));
+  children.push(...docFooterBlock(bundle, orgName, confidentiality, departmentCodes));
 
   const doc = new Document({
     creator: orgName,
