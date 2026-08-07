@@ -248,18 +248,13 @@ function ItemCard({
   item,
   index,
   accent,
-  departmentCode,
 }: {
   item: BriefItem;
   index: number;
   accent: Hue;
-  departmentCode: string;
 }) {
   const tokens = hueTokens(accent);
-  const ownerLabel =
-    item.owners.length > 0
-      ? `${departmentCode} · ${item.owners.join(' · ')}`
-      : departmentCode;
+  const ownerLabel = item.owners.length > 0 ? item.owners.join(' · ') : null;
 
   return (
     <RailCard accent={accent}>
@@ -276,7 +271,7 @@ function ItemCard({
         <h4 className="min-w-0 flex-1 text-[13px] font-bold leading-[1.32] tracking-[-0.008em] text-ink-900">
           {item.title}
         </h4>
-        <OwnerTag accent={accent}>{ownerLabel}</OwnerTag>
+        {ownerLabel ? <OwnerTag accent={accent}>{ownerLabel}</OwnerTag> : null}
       </div>
 
       <p className="mt-[5px] pl-[24px] text-[10.5px] leading-[1.58] text-ink-600">
@@ -299,11 +294,9 @@ function ItemCard({
 export function DocTrack({
   track,
   accent,
-  departmentCode,
 }: {
   track: BriefTrack;
   accent: Hue;
-  departmentCode: string;
 }) {
   const tokens = hueTokens(accent);
   return (
@@ -334,13 +327,7 @@ export function DocTrack({
 
       <div className="mt-[9px] flex flex-col gap-[8px]">
         {track.items.map((item, index) => (
-          <ItemCard
-            key={item.title}
-            item={item}
-            index={index}
-            accent={accent}
-            departmentCode={departmentCode}
-          />
+          <ItemCard key={item.title} item={item} index={index} accent={accent} />
         ))}
       </div>
     </section>

@@ -1,21 +1,22 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { FileDown, FileText, Printer, Trash2 } from 'lucide-react';
+import { FileDown, FileText, Printer } from 'lucide-react';
 
 import { Button, Notice } from '@/components/ui';
+import type { BriefBundle } from '@/lib/brief-bundle';
 
 /**
- * Export and delete controls.
+ * Export controls.
  *
- * Downloads go through `fetch` rather than a bare link so a server-side failure
- * surfaces as a readable message instead of the browser saving an HTML error page
- * with a .pdf extension.
+ * Downloads POST the bundle itself rather than referencing a stored id — the
+ * server never persisted this document, so the bundle held in this tab is the
+ * only copy that exists. `fetch` rather than a bare link so a server-side
+ * failure surfaces as a readable message instead of the browser saving an
+ * HTML error page with a .pdf extension.
  */
-export function ExportBar({ id, title }: { id: string; title: string }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState<'pdf' | 'docx' | 'delete' | null>(null);
+export function ExportBar({ bundle, title }: { bundle: BriefBundle; title: string }) {
+  const [busy, setBusy] = useState<'pdf' | 'docx' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function download(kind: 'pdf' | 'docx') {
@@ -24,7 +25,11 @@ export function ExportBar({ id, title }: { id: string; title: string }) {
     setError(null);
 
     try {
-      const response = await fetch(`/api/briefs/${id}/${kind}`);
+      const response = await fetch(`/api/briefs/render/${kind}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bundle }),
+      });
 
       if (!response.ok) {
         let message = `The ${kind.toUpperCase()} could not be generated.`;
@@ -57,27 +62,6 @@ export function ExportBar({ id, title }: { id: string; title: string }) {
     }
   }
 
-  async function remove() {
-    if (busy) return;
-    if (!window.confirm(`Delete “${title}”? This cannot be undone.`)) return;
-
-    setBusy('delete');
-    setError(null);
-    try {
-      const response = await fetch(`/api/briefs/${id}`, { method: 'DELETE' });
-      if (!response.ok) {
-        setError('That brief could not be deleted.');
-        setBusy(null);
-        return;
-      }
-      router.replace('/library');
-      router.refresh();
-    } catch {
-      setError('The delete request failed. Try again.');
-      setBusy(null);
-    }
-  }
-
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -104,17 +88,6 @@ export function ExportBar({ id, title }: { id: string; title: string }) {
         >
           <Printer className="size-[18px]" aria-hidden />
           Print
-        </Button>
-
-        <Button
-          variant="danger"
-          onClick={remove}
-          busy={busy === 'delete'}
-          disabled={busy !== null}
-          className="ml-auto"
-        >
-          <Trash2 className="size-[18px]" aria-hidden />
-          Delete
         </Button>
       </div>
 

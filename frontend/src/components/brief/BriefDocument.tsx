@@ -64,12 +64,7 @@ export function BriefDocument({
       <DocMetrics brief={brief} seed={seed} />
 
       {brief.tracks.map((track, index) => (
-        <DocTrack
-          key={track.code}
-          track={track}
-          accent={rotateHue(index, seed)}
-          departmentCode={department.code}
-        />
+        <DocTrack key={track.code} track={track} accent={rotateHue(index, seed)} />
       ))}
 
       <DocDecisionsAndRisks brief={brief} seed={seed} />

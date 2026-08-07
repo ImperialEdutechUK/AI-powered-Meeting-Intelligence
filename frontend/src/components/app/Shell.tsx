@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { FileUp, LibraryBig, LogOut, Menu, Sparkles, X } from 'lucide-react';
+import { FileUp, LogOut, Menu, Sparkles, X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui';
@@ -12,13 +12,13 @@ import { Button } from '@/components/ui';
  * Application chrome.
  *
  * A single left rail with three destinations, collapsing to a sheet under `lg`.
- * Three is the whole navigation: generate, library, example. Anything more would
- * be menu for its own sake — the app does one job.
+ * Two is the whole navigation: generate, example. Anything more would be menu
+ * for its own sake — the app does one job, and nothing it produces is stored
+ * to browse later.
  */
 
 const NAV = [
   { href: '/new', label: 'New brief', icon: FileUp, hint: 'Upload a transcript' },
-  { href: '/library', label: 'Library', icon: LibraryBig, hint: 'Everything generated' },
   { href: '/example', label: 'Example', icon: Sparkles, hint: 'A worked sample' },
 ] as const;
 

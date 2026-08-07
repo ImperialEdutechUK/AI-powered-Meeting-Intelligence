@@ -2,8 +2,7 @@ import { notFound } from 'next/navigation';
 
 import { BriefDocument } from '@/components/brief/BriefDocument';
 import { isSignedIn } from '@/lib/auth';
-import { serverEnv } from '@/lib/env';
-import { BriefNotFoundError, getBrief } from '@/lib/repository';
+import { takePendingBrief } from '@/lib/export/pending-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,28 +11,25 @@ export const dynamic = 'force-dynamic';
  *
  * No app chrome, no preview frame, no client JavaScript — just the document at
  * its natural A4 width. Chromium loads this, waits for `data-print-ready`, and
- * prints it.
+ * prints it. The bundle comes from the transient pending-store (see
+ * `lib/export/pending-store.ts`), not a database — the token is single-use and
+ * is gone the instant this page reads it.
  */
-export default async function PrintPage({
+export default async function PrintRenderPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ token: string }>;
 }) {
   if (!(await isSignedIn())) notFound();
 
-  const { id } = await params;
+  const { token } = await params;
 
-  let record;
-  try {
-    record = await getBrief(id);
-  } catch (error) {
-    if (error instanceof BriefNotFoundError) notFound();
-    throw error;
-  }
+  const pending = takePendingBrief(token);
+  if (!pending) notFound();
 
   return (
     <>
-      <BriefDocument bundle={record.bundle} orgName={serverEnv().ORG_NAME} />
+      <BriefDocument bundle={pending.bundle} orgName={pending.orgName} />
       {/*
         Readiness signal for the PDF renderer, plus a stylesheet assertion.
 

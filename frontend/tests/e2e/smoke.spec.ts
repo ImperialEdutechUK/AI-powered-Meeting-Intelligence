@@ -24,19 +24,23 @@ test.describe('unauthenticated', () => {
   });
 
   test('the app redirects to the sign-in gate', async ({ page }) => {
-    await page.goto('/library');
+    await page.goto('/new');
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByRole('heading', { name: 'ActionBrief' })).toBeVisible();
   });
 
-  test('the API refuses unauthenticated reads', async ({ request }) => {
-    const response = await request.get('/api/briefs');
+  test('the API refuses unauthenticated generation', async ({ request }) => {
+    const response = await request.post('/api/briefs');
     expect(response.status()).toBe(401);
   });
 
-  // `/print/[id]` no longer lives in the frontend — it moved to the backend as
-  // the internal render target for the PDF pipeline, reachable only by that
-  // service's own Chromium instance. There is nothing to smoke-test for it here.
+  // `/print/render/[token]` no longer lives in the frontend — it moved to the
+  // backend as the internal render target for the PDF pipeline, reachable only
+  // by that service's own Chromium instance. There is nothing to smoke-test
+  // for it here. Briefs are never persisted, so there is no `/library` or
+  // `/brief/[id]` route to test either — only `/brief/preview`, which reads
+  // the just-generated document out of sessionStorage and is covered by the
+  // mocked-model integration test.
 
   test('the example brief is viewable without signing in', async ({ page }) => {
     await page.goto('/example');
@@ -105,11 +109,12 @@ test.describe('authenticated', () => {
     await expect(page.getByLabel('Attendees and their roles')).toBeVisible();
   });
 
-  test('the library renders', async ({ page }) => {
-    await page.goto('/library');
-    await expect(
-      page.getByRole('heading', { name: /Every brief/i }),
-    ).toBeVisible();
+  test('visiting the preview screen without a just-generated brief prompts to start one', async ({
+    page,
+  }) => {
+    await page.goto('/brief/preview');
+    await expect(page.getByText('Nothing to show here')).toBeVisible();
+    await expect(page.getByRole('link', { name: /New brief/i })).toBeVisible();
   });
 
   test('signing out returns to the gate', async ({ page, isMobile }) => {
