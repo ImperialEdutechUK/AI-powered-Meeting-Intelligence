@@ -4,7 +4,7 @@ import { currentSession } from '@/lib/auth';
 import { errorResponse, fail, ok, unauthorised } from '@/lib/api';
 import { checkRateLimit, clientIp } from '@/lib/rate-limit';
 import { serverEnv } from '@/lib/env';
-import { BriefInputsSchema, parseRoster } from '@/lib/brief-inputs';
+import { BriefInputsSchema, parseRoster, type BriefInputs } from '@/lib/brief-inputs';
 import { ingestTranscript } from '@/lib/transcript';
 import { generateBrief } from '@/lib/ai/generate';
 import { checkGrounding } from '@/lib/qa/grounding';
@@ -109,8 +109,30 @@ export async function POST(request: Request): Promise<NextResponse> {
     const roster = parseRoster(inputs.roster);
     const buffer = Buffer.from(await file.arrayBuffer());
 
+    // Everything above answers quickly with a real status code. Generation can
+    // take minutes, so from here the response is streamed (see streamJson).
+    return streamJson(() => generate({ inputs, roster, buffer, fileName: file.name, maxBytes }));
+  } catch (error) {
+    return errorResponse(error, 'briefs/create');
+  }
+}
+
+async function generate({
+  inputs,
+  roster,
+  buffer,
+  fileName,
+  maxBytes,
+}: {
+  inputs: BriefInputs;
+  roster: ReturnType<typeof parseRoster>;
+  buffer: Buffer;
+  fileName: string;
+  maxBytes: number;
+}): Promise<NextResponse> {
+  try {
     const transcript = await ingestTranscript({
-      fileName: file.name,
+      fileName,
       buffer,
       maxBytes,
       knownNames: roster.map((r) => r.name),
@@ -174,4 +196,47 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch (error) {
     return errorResponse(error, 'briefs/create');
   }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Heartbeat streaming                                                       */
+/* ------------------------------------------------------------------------- */
+
+const HEARTBEAT_MS = 10_000;
+
+/*
+ * CloudFront drops an origin response that goes quiet for more than 60
+ * seconds, and a long transcript can keep the model busy for longer than that.
+ * So the response starts immediately and a single space is written every ten
+ * seconds until the real JSON body is ready. Leading whitespace is valid JSON,
+ * so the client's `response.json()` is unaffected.
+ *
+ * The HTTP status is committed (200) before the work finishes, so errors from
+ * here on travel only in the `{ ok: false, error }` envelope — which is what
+ * the client checks.
+ */
+function streamJson(work: () => Promise<NextResponse>): NextResponse {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      controller.enqueue(encoder.encode(' '));
+      const timer = setInterval(() => controller.enqueue(encoder.encode(' ')), HEARTBEAT_MS);
+      try {
+        const response = await work();
+        controller.enqueue(encoder.encode(await response.text()));
+      } finally {
+        clearInterval(timer);
+        controller.close();
+      }
+    },
+  });
+
+  return new NextResponse(stream, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Accel-Buffering': 'no',
+    },
+  });
 }

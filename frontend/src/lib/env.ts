@@ -1,39 +1,32 @@
-import { z } from 'zod';
-
 /**
- * Frontend environment contract.
+ * Frontend configuration.
  *
- * Deliberately tiny: everything that used to live in the single app's
- * `serverEnv()` (DATABASE_URL, SESSION_SECRET, OPENROUTER_*, ...) is backend-only
- * now. The frontend only needs to know where the backend is and what branding to
- * show — it never validates or touches the values that gate access or spend.
+ * The frontend is a static export served from S3, so there is no server-side
+ * environment at request time. These values are inlined at build time from
+ * `NEXT_PUBLIC_*` variables — they must be read as literal
+ * `process.env.NEXT_PUBLIC_X` expressions for Next to substitute them, and
+ * nothing secret may ever live here.
  */
 
-const schema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-
-  /** Railway injects PORT. */
-  PORT: z.coerce.number().int().positive().default(3000),
-
-  /** Internal origin of the backend service, used for server-side fetches. */
-  BACKEND_URL: z.string().url().default('http://127.0.0.1:3001'),
-
+export interface FrontendEnv {
   /** Branding shown in the app chrome and login screen. */
-  ORG_NAME: z.string().default('Imperial Edutech'),
-  ORG_SHORT: z.string().default('IL'),
-
+  ORG_NAME: string;
+  ORG_SHORT: string;
   /** Upload ceiling, megabytes — shown to the user before they pick a file. */
-  MAX_UPLOAD_MB: z.coerce.number().int().min(1).max(100).default(25),
-});
+  MAX_UPLOAD_MB: number;
+}
 
-export type FrontendEnv = z.infer<typeof schema>;
+function toUploadMb(raw: string | undefined): number {
+  const value = Number(raw);
+  return Number.isInteger(value) && value >= 1 && value <= 100 ? value : 4;
+}
 
-let cached: FrontendEnv | null = null;
+const env: FrontendEnv = {
+  ORG_NAME: process.env.NEXT_PUBLIC_ORG_NAME || 'Imperial Edutech',
+  ORG_SHORT: process.env.NEXT_PUBLIC_ORG_SHORT || 'IL',
+  MAX_UPLOAD_MB: toUploadMb(process.env.NEXT_PUBLIC_MAX_UPLOAD_MB),
+};
 
 export function frontendEnv(): FrontendEnv {
-  if (cached) return cached;
-  // Every field has a default, so this never throws — the frontend must still
-  // render (with sane fallbacks) if BACKEND_URL/ORG_NAME are not set.
-  cached = schema.parse(process.env);
-  return cached;
+  return env;
 }

@@ -1,9 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 
 import { Button, Field, Notice, TextInput } from '@/components/ui';
+import { fetchSession } from '@/lib/session';
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -50,13 +51,25 @@ function safeNext(candidate: string): string {
   return NEXT_ALLOWLIST.some((pattern) => pattern.test(candidate)) ? candidate : '/new';
 }
 
-export function LoginForm({ next }: { next: string }) {
+/** The `?next=` destination, read client-side: the page is statically exported. */
+function nextFromLocation(): string {
+  return new URLSearchParams(window.location.search).get('next') ?? '/new';
+}
+
+export function LoginForm() {
   const router = useRouter();
   const [passcode, setPasscode] = useState('');
   const [showPasscode, setShowPasscode] = useState(false);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Already signed in: skip the gate.
+  useEffect(() => {
+    void fetchSession().then(({ signedIn }) => {
+      if (signedIn) router.replace(safeNext(nextFromLocation()));
+    });
+  }, [router]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -82,9 +95,7 @@ export function LoginForm({ next }: { next: string }) {
         return;
       }
 
-      // Full navigation so server components pick up the new cookie.
-      router.replace(safeNext(next));
-      router.refresh();
+      router.replace(safeNext(nextFromLocation()));
     } catch {
       setError('Could not reach the server. Check your connection and try again.');
       setBusy(false);

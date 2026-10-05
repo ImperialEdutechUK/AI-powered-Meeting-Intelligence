@@ -167,9 +167,15 @@ apps, so a broken build cannot reach an image.
 
 ## Deployment
 
-See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for the Railway walkthrough (two
-services), the full environment-variable reference, and how to diagnose a
-deployment from `/api/health`.
+**AWS (production target):** see **[infra/README.md](./infra/README.md)**. The
+frontend is a static export on S3 + CloudFront, and the backend runs as a
+scale-to-zero Lambda behind the same domain at `/api/*`. It's served at
+https://meeting-notes.imperial.imet.lk/ for roughly 5–10 ¢/month, plus OpenRouter
+usage. One command: `infra/deploy.sh`.
+
+**Railway (legacy):** see [DEPLOYMENT.md](./DEPLOYMENT.md). The backend image still
+runs there unchanged. The frontend is now a static export, so on Railway it would
+need a static host instead of its old container.
 
 ---
 

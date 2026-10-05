@@ -162,7 +162,7 @@ export function NewBriefForm({ maxUploadMb }: { maxUploadMb: number }) {
 
         <p className="mt-0.5 text-[12px] leading-relaxed text-ink-400">
           Select one or more. The first one you pick is primary — it sets the
-          document's theme and footer code.
+          document&apos;s theme and footer code.
         </p>
 
         {/*

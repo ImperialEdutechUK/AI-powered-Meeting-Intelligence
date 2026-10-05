@@ -3,20 +3,25 @@ import { query, transaction } from './db';
 import { serverEnv } from './env';
 
 /**
- * Per-IP throttle for the generate endpoint.
+ * Per-IP throttle for the generate and login endpoints.
  *
- * Backed by Postgres rather than memory so the limit still holds if Railway runs
- * more than one instance, and so a restart cannot be used to reset it. The table
- * is pruned on write, which keeps it small without a scheduled job.
+ * Three stores, picked by configuration:
  *
- * The count-then-insert below runs inside a transaction holding a Postgres
- * advisory lock scoped to the bucket, so two requests from the same IP arriving
- * at the same instant can't both read the count before either insert lands and
- * slip past the limit together. The lock is per-bucket (via `hashtext`), so it
- * never blocks unrelated IPs against each other.
+ * - **DynamoDB** (`RATE_LIMIT_TABLE`, the AWS deployment). A fixed one-hour
+ *   window per bucket, counted with a single conditional `UpdateItem`, so the
+ *   check-and-increment is atomic across concurrent Lambda instances. Items
+ *   expire through DynamoDB TTL, so the table needs no pruning job. On-demand
+ *   billing makes this effectively free at this app's volume.
+ *
+ * - **Postgres** (`DATABASE_URL`, the Railway deployment). A sliding window.
+ *   The count-then-insert runs inside a transaction holding a per-bucket
+ *   advisory lock, so two simultaneous requests cannot both slip past the limit.
+ *
+ * - **Memory** (neither set — local development only). Per-process, so it
+ *   resets on restart and does not hold across instances.
  */
 
-/** IPs are hashed so the table holds no directly identifying data. */
+/** IPs are hashed so no store holds directly identifying data. */
 function bucketFor(ip: string, scope: string): string {
   return `${scope}:${createHash('sha256').update(ip).digest('hex').slice(0, 32)}`;
 }
@@ -25,7 +30,7 @@ export interface RateVerdict {
   allowed: boolean;
   used: number;
   limit: number;
-  /** Seconds until the oldest event in the window falls out of it. */
+  /** Seconds until the caller may try again. */
   retryAfterSeconds: number;
 }
 
@@ -33,9 +38,69 @@ export async function checkRateLimit(
   ip: string,
   scope = 'generate',
 ): Promise<RateVerdict> {
-  const limit = serverEnv().RATE_LIMIT_PER_HOUR;
+  const env = serverEnv();
+  const limit = env.RATE_LIMIT_PER_HOUR;
   const bucket = bucketFor(ip, scope);
 
+  if (env.RATE_LIMIT_TABLE) return checkDynamo(env.RATE_LIMIT_TABLE, bucket, limit);
+  if (env.DATABASE_URL) return checkPostgres(bucket, limit);
+  return checkMemory(bucket, limit);
+}
+
+/* ------------------------------------------------------------------------- */
+/* DynamoDB                                                                  */
+/* ------------------------------------------------------------------------- */
+
+const HOUR_MS = 3_600_000;
+
+async function checkDynamo(table: string, bucket: string, limit: number): Promise<RateVerdict> {
+  const { DynamoDBClient, UpdateItemCommand, ConditionalCheckFailedException } =
+    await import('@aws-sdk/client-dynamodb');
+
+  const client = dynamoClient(DynamoDBClient);
+  const windowStart = Math.floor(Date.now() / HOUR_MS) * HOUR_MS;
+  const retryAfterSeconds = Math.max(1, Math.ceil((windowStart + HOUR_MS - Date.now()) / 1000));
+
+  try {
+    const result = await client.send(
+      new UpdateItemCommand({
+        TableName: table,
+        Key: { pk: { S: `${bucket}#${windowStart}` } },
+        UpdateExpression: 'ADD hits :one SET expiresAt = if_not_exists(expiresAt, :exp)',
+        ConditionExpression: 'attribute_not_exists(hits) OR hits < :limit',
+        ExpressionAttributeValues: {
+          ':one': { N: '1' },
+          ':limit': { N: String(limit) },
+          // Kept an hour past the window's end; TTL deletion is lazy anyway.
+          ':exp': { N: String(Math.floor((windowStart + 2 * HOUR_MS) / 1000)) },
+        },
+        ReturnValues: 'UPDATED_NEW',
+      }),
+    );
+    const used = Number(result.Attributes?.hits?.N ?? 1);
+    return { allowed: true, used, limit, retryAfterSeconds: 0 };
+  } catch (error) {
+    if (error instanceof ConditionalCheckFailedException) {
+      return { allowed: false, used: limit, limit, retryAfterSeconds };
+    }
+    throw error;
+  }
+}
+
+declare global {
+  var __actionbriefDynamo: unknown;
+}
+
+function dynamoClient<T>(Ctor: new () => T): T {
+  globalThis.__actionbriefDynamo ??= new Ctor();
+  return globalThis.__actionbriefDynamo as T;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Postgres                                                                  */
+/* ------------------------------------------------------------------------- */
+
+async function checkPostgres(bucket: string, limit: number): Promise<RateVerdict> {
   // Opportunistic prune: cheap, indexed, and keeps the table bounded.
   await query(`DELETE FROM rate_events WHERE created_at < now() - interval '2 hours'`);
 
@@ -56,7 +121,7 @@ export async function checkRateLimit(
     const retryAfterSeconds =
       oldest === null
         ? 0
-        : Math.max(1, Math.ceil((oldest.getTime() + 3_600_000 - Date.now()) / 1000));
+        : Math.max(1, Math.ceil((oldest.getTime() + HOUR_MS - Date.now()) / 1000));
 
     if (used >= limit) {
       return { allowed: false, used, limit, retryAfterSeconds };
@@ -67,11 +132,44 @@ export async function checkRateLimit(
   });
 }
 
+/* ------------------------------------------------------------------------- */
+/* Memory (development)                                                      */
+/* ------------------------------------------------------------------------- */
+
+const memory = new Map<string, number[]>();
+
+function checkMemory(bucket: string, limit: number): RateVerdict {
+  const now = Date.now();
+  const events = (memory.get(bucket) ?? []).filter((at) => at > now - HOUR_MS);
+  if (events.length >= limit) {
+    memory.set(bucket, events);
+    const retryAfterSeconds = Math.max(1, Math.ceil((events[0]! + HOUR_MS - now) / 1000));
+    return { allowed: false, used: events.length, limit, retryAfterSeconds };
+  }
+  events.push(now);
+  memory.set(bucket, events);
+  return { allowed: true, used: events.length, limit, retryAfterSeconds: 0 };
+}
+
+/* ------------------------------------------------------------------------- */
+/* Client IP                                                                 */
+/* ------------------------------------------------------------------------- */
+
 /**
  * Best-effort client IP.
- * Railway sets `x-forwarded-for`; the left-most entry is the original client.
+ *
+ * Behind CloudFront, `cloudfront-viewer-address` (`ip:port`, set by CloudFront
+ * itself) is the only value a client cannot spoof — CloudFront appends to an
+ * incoming `x-forwarded-for` rather than replacing it. Elsewhere (Railway),
+ * the left-most `x-forwarded-for` entry is the original client.
  */
 export function clientIp(headers: Headers): string {
+  const viewer = headers.get('cloudfront-viewer-address')?.trim();
+  if (viewer) {
+    const colon = viewer.lastIndexOf(':');
+    return colon > 0 ? viewer.slice(0, colon) : viewer;
+  }
+
   const forwarded = headers.get('x-forwarded-for');
   if (forwarded) {
     const first = forwarded.split(',')[0]?.trim();

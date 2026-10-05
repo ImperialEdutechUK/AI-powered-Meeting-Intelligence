@@ -27,8 +27,11 @@ export async function GET(): Promise<NextResponse> {
   checks.config = configured;
 
   if (configured) {
-    checks.database = await ping();
-    if (!checks.database) notes.push('Database is unreachable.');
+    const env = serverEnv();
+    if (env.DATABASE_URL && !env.RATE_LIMIT_TABLE) {
+      checks.database = await ping();
+      if (!checks.database) notes.push('Database is unreachable.');
+    }
 
     checks.pdf = await pdfAvailable();
     if (!checks.pdf) notes.push('Chromium not found — PDF export is unavailable.');
