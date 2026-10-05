@@ -18,6 +18,7 @@ export function pool(): Pool {
   if (globalThis.__actionbriefPool) return globalThis.__actionbriefPool;
 
   const env = serverEnv();
+  if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not configured.');
   const created = new Pool({
     connectionString: env.DATABASE_URL,
     // Railway's internal network does not need TLS; managed external Postgres does.

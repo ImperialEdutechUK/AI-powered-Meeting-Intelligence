@@ -4,7 +4,8 @@
  *
  * 1. Fail fast and loudly on missing configuration, naming every variable, so a
  *    bad deploy is diagnosable from the first line of the Railway log.
- * 2. Run migrations.
+ * 2. Run migrations — only when Postgres is configured. The AWS deployment
+ *    has no database; its rate limiter uses DynamoDB (`RATE_LIMIT_TABLE`).
  * 3. Hand off to the Next standalone server via `exec`-style replacement so
  *    signals reach it directly and Railway's restarts stay clean.
  */
@@ -17,20 +18,26 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 
-const REQUIRED = ['DATABASE_URL', 'OPENROUTER_API_KEY', 'APP_PASSCODE', 'SESSION_SECRET'];
+const REQUIRED = ['OPENROUTER_API_KEY', 'APP_PASSCODE', 'SESSION_SECRET'];
 
-const missing = REQUIRED.filter((key) => !String(process.env[key] ?? '').trim());
+// On AWS the secrets are fetched from SSM by src/instrumentation.ts after the
+// server starts, so they cannot be checked here.
+const secretsFromSsm = Boolean(String(process.env.SECRETS_SSM_PATH ?? '').trim());
+
+const missing = secretsFromSsm
+  ? []
+  : REQUIRED.filter((key) => !String(process.env[key] ?? '').trim());
 if (missing.length > 0) {
   console.error(
     '\n[start] Cannot boot. These environment variables are not set:\n' +
       missing.map((key) => `  - ${key}`).join('\n') +
-      '\n\nSet them in Railway under Variables, then redeploy.' +
+      '\n\nSet them in the deployment environment (Lambda or Railway), then redeploy.' +
       '\nSee DEPLOYMENT.md for what each one is.\n',
   );
   process.exit(1);
 }
 
-if (String(process.env.SESSION_SECRET).length < 32) {
+if (!secretsFromSsm && String(process.env.SESSION_SECRET).length < 32) {
   console.error(
     '\n[start] SESSION_SECRET must be at least 32 characters.' +
       '\nGenerate one with:  openssl rand -hex 32\n',
@@ -38,7 +45,7 @@ if (String(process.env.SESSION_SECRET).length < 32) {
   process.exit(1);
 }
 
-if (String(process.env.APP_PASSCODE).length < 6) {
+if (!secretsFromSsm && String(process.env.APP_PASSCODE).length < 6) {
   console.error('\n[start] APP_PASSCODE must be at least 6 characters.\n');
   process.exit(1);
 }
@@ -55,10 +62,12 @@ function run(command, args, options = {}) {
   });
 }
 
-const migrateCode = await run(process.execPath, [join(here, 'migrate.mjs')], { cwd: root });
-if (migrateCode !== 0) {
-  console.error('[start] migrations failed; refusing to start.');
-  process.exit(migrateCode);
+if (String(process.env.DATABASE_URL ?? '').trim()) {
+  const migrateCode = await run(process.execPath, [join(here, 'migrate.mjs')], { cwd: root });
+  if (migrateCode !== 0) {
+    console.error('[start] migrations failed; refusing to start.');
+    process.exit(migrateCode);
+  }
 }
 
 /*
@@ -80,6 +89,23 @@ if (!serverEntry) {
       'removed from next.config.ts.',
   );
   process.exit(1);
+}
+
+/*
+ * Lambda loads container-image files lazily from ECR on first read, so the
+ * first Chromium launch on a fresh instance can take 30s+ just paging in
+ * ~250 MB of browser. Read those files once in the background, at low
+ * priority, while the user is still signing in or generating — by the time
+ * they export a PDF, the browser starts in about a second. Never blocks boot.
+ */
+if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  const warm = spawn(
+    'nice',
+    ['-n', '19', 'sh', '-c', 'find /usr/lib/chromium /usr/share/fonts -type f -exec cat {} + > /dev/null 2>&1'],
+    { stdio: 'ignore', detached: true },
+  );
+  warm.on('error', () => undefined);
+  warm.unref();
 }
 
 const port = process.env.PORT ?? '3000';

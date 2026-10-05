@@ -6,11 +6,15 @@ const nextConfig: NextConfig = {
   output: 'standalone',
 
   reactStrictMode: true,
+  // CloudFront compresses at the edge. Next's own gzip buffers streamed
+  // responses, which would swallow the heartbeat bytes `POST /api/briefs`
+  // sends to keep CloudFront's 60s origin timeout from firing.
+  compress: false,
   poweredByHeader: false,
 
   // `puppeteer-core` and `unpdf` must stay external — bundling them breaks their
   // dynamic worker/binary resolution inside the Next server build.
-  serverExternalPackages: ['puppeteer-core', 'unpdf', 'pg', 'mammoth'],
+  serverExternalPackages: ['puppeteer-core', 'unpdf', 'pg', 'mammoth', '@aws-sdk/client-dynamodb', '@aws-sdk/client-ssm'],
 
   async headers() {
     return [

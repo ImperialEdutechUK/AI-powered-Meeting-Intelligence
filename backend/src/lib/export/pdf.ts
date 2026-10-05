@@ -99,7 +99,9 @@ async function renderPdfNow(options: RenderPdfOptions): Promise<Buffer> {
       executablePath,
       args: CHROMIUM_ARGS,
       headless: true,
-      timeout: 30_000,
+      // Generous for a cold Lambda instance still paging the browser in from
+      // the image (see scripts/start.mjs), yet under CloudFront's 60s limit.
+      timeout: 50_000,
       protocolTimeout: timeoutMs,
     });
 
@@ -110,8 +112,14 @@ async function renderPdfNow(options: RenderPdfOptions): Promise<Buffer> {
     // The print route is self-contained; block anything third-party outright.
     await page.setJavaScriptEnabled(true);
 
-    if (cookie) {
-      await page.setExtraHTTPHeaders({ cookie });
+    const extraHeaders: Record<string, string> = {};
+    if (cookie) extraHeaders.cookie = cookie;
+    // The loopback request must pass the same origin lock CloudFront's do
+    // (see `src/proxy.ts`).
+    const originSecret = process.env.ORIGIN_VERIFY_SECRET;
+    if (originSecret) extraHeaders['x-origin-verify'] = originSecret;
+    if (Object.keys(extraHeaders).length > 0) {
+      await page.setExtraHTTPHeaders(extraHeaders);
     }
 
     const origin = selfOrigin().replace(/\/+$/, '');
