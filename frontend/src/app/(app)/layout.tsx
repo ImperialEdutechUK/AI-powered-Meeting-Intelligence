@@ -1,20 +1,28 @@
-import { redirect } from 'next/navigation';
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 import { Shell } from '@/components/app/Shell';
-import { backendJson } from '@/lib/backend';
 import { frontendEnv } from '@/lib/env';
-import type { SessionInfo } from '@/lib/api-types';
+import { useSession } from '@/lib/session';
 
-export const dynamic = 'force-dynamic';
-
-export default async function AppLayout({
+export default function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { signedIn, who } = await backendJson<SessionInfo>('/api/auth/session');
-  if (!signedIn) redirect('/login');
+  const router = useRouter();
+  const session = useSession();
+
+  useEffect(() => {
+    if (session && !session.signedIn) router.replace('/login');
+  }, [router, session]);
+
+  // Render nothing until the backend confirms the session, so signed-out
+  // visitors never see the app chrome flash before the redirect.
+  if (!session?.signedIn) return null;
 
   return (
-    <Shell orgName={frontendEnv().ORG_NAME} who={who ?? ''}>
+    <Shell orgName={frontendEnv().ORG_NAME} who={session.who ?? ''}>
       {children}
     </Shell>
   );

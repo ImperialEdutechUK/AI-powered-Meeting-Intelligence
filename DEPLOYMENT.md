@@ -1,5 +1,10 @@
 # Deploying ActionBrief to Railway
 
+> **The production target is now AWS (S3 + CloudFront + Lambda).** See
+> [infra/README.md](./infra/README.md). This Railway guide is kept for reference.
+> The frontend has since become a static export, so its Railway container
+> files were removed.
+
 ActionBrief is two services now — `backend/` (API, Postgres, Chromium) and
 `frontend/` (the UI, proxying `/api/*` to the backend). Deploy the backend
 first; the frontend needs its URL. Start to finish this is about twenty

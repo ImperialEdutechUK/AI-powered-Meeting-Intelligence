@@ -27,8 +27,24 @@ const schema = z.object({
    */
   APP_BASE_URL: z.string().url().optional(),
 
-  /** Postgres connection string (Railway plugin provides this). */
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  /**
+   * Postgres connection string. Optional: only the rate limiter uses storage,
+   * and on AWS it uses DynamoDB (`RATE_LIMIT_TABLE`) instead.
+   */
+  DATABASE_URL: z.string().min(1).optional(),
+
+  /**
+   * DynamoDB table for the rate limiter (AWS deployment). Takes precedence over
+   * Postgres when set. Partition key `pk` (string), TTL attribute `expiresAt`.
+   */
+  RATE_LIMIT_TABLE: z.string().min(1).optional(),
+
+  /**
+   * Shared secret CloudFront sends as `x-origin-verify` on every request. When
+   * set, requests without it are refused, so the Lambda function URL cannot be
+   * used directly to bypass CloudFront.
+   */
+  ORIGIN_VERIFY_SECRET: z.string().min(16).optional(),
 
   /** Set to true when connecting to a managed Postgres that needs TLS. */
   DATABASE_SSL: Booleanish.default(false),

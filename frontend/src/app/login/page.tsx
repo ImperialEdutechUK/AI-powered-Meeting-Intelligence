@@ -1,24 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 
-import { backendJson } from '@/lib/backend';
 import { frontendEnv } from '@/lib/env';
-import type { SessionInfo } from '@/lib/api-types';
 import { LoginForm } from '@/components/app/LoginForm';
 
 export const metadata: Metadata = { title: 'Sign in' };
-export const dynamic = 'force-dynamic';
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ next?: string }>;
-}) {
-  const { signedIn } = await backendJson<SessionInfo>('/api/auth/session');
-  if (signedIn) redirect('/new');
-
-  const { next } = await searchParams;
+export default function LoginPage() {
   const orgName = frontendEnv().ORG_NAME;
 
   return (
@@ -58,7 +46,7 @@ export default async function LoginPage({
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.6)]">
-          <LoginForm next={typeof next === 'string' ? next : '/new'} />
+          <LoginForm />
         </div>
 
         <p className="mt-5 text-center text-xs text-white/60">

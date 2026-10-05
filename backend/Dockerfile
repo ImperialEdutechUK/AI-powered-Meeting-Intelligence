@@ -1,7 +1,13 @@
 # syntax=docker/dockerfile:1
 
 ###############################################################################
-# ActionBrief backend — production image for Railway
+# ActionBrief backend — production image for AWS Lambda (and Railway)
+#
+# On AWS this image runs as a container-image Lambda function behind
+# CloudFront. The AWS Lambda Web Adapter extension (copied in below) turns
+# Lambda invocations into plain HTTP requests against the Next server, so the
+# app runs unmodified. Outside Lambda the extension is inert and the image
+# behaves exactly as a normal container (Railway, `docker run`).
 #
 # Three stages so the runtime image carries no build toolchain and no dev
 # dependencies. Chromium comes from Debian's repository rather than Puppeteer's
@@ -95,6 +101,13 @@ COPY --from=build --chown=appuser:nodejs /app/.next/static ./.next/static
 # Migrations and the entrypoint, alongside the server they wrap.
 COPY --from=build --chown=appuser:nodejs /app/db ./db
 COPY --from=build --chown=appuser:nodejs /app/scripts ./scripts
+
+# Lambda's filesystem is read-only apart from /tmp; point Next's cache there.
+RUN ln -s /tmp/next-cache ./.next/cache
+
+# AWS Lambda Web Adapter. Configured by the AWS_LWA_* variables the Lambda
+# function sets (infra/template.yaml); does nothing outside Lambda.
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.1.0 /lambda-adapter /opt/extensions/lambda-adapter
 
 USER appuser
 

@@ -7,7 +7,6 @@ import { frontendEnv } from '@/lib/env';
 import { formatCost } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'New brief' };
-export const dynamic = 'force-dynamic';
 
 export default function NewBriefPage() {
   const env = frontendEnv();

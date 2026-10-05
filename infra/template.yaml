@@ -1,0 +1,387 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  ActionBrief — static frontend on S3 + CloudFront, backend API as a
+  scale-to-zero Lambda (container image) behind the same CloudFront domain at
+  /api/*. No always-on compute and no database server: idle cost is cents.
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: Public hostname, e.g. meeting-notes.imperial.imet.lk
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+    Description: Route 53 public hosted zone that contains DomainName
+  CertificateArn:
+    Type: String
+    Description: ACM certificate in us-east-1 covering DomainName (CloudFront requirement)
+  ImageUri:
+    Type: String
+    Description: ECR image URI for the backend (pushed by infra/deploy.sh)
+  OriginVerifySecret:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+    Description: >-
+      Sent by CloudFront as x-origin-verify. The Lambda reads its copy from SSM.
+      The other secrets (OpenRouter key, passcode, session secret) never pass
+      through CloudFormation at all — see SECRETS_SSM_PATH below.
+  OrgName:
+    Type: String
+    Default: Imperial Edutech
+  OrgShort:
+    Type: String
+    Default: IL
+  MaxUploadMb:
+    Type: Number
+    Default: 4
+    MinValue: 1
+    MaxValue: 5
+    Description: Lambda function URLs cap request bodies at 6 MB, so 5 is the ceiling.
+  RateLimitPerHour:
+    Type: Number
+    Default: 40
+  LambdaMemoryMb:
+    Type: Number
+    Default: 2048
+    Description: Chromium (PDF export) needs ~1.5 GB headroom; memory also scales CPU.
+  PriceClass:
+    Type: String
+    Default: PriceClass_200
+    AllowedValues: [PriceClass_100, PriceClass_200, PriceClass_All]
+    Description: >-
+      PriceClass_200 includes edge locations in India/Asia (close to Sri Lanka).
+      At this traffic level all classes sit inside CloudFront's free tier.
+
+Resources:
+  # ─── Static site ───────────────────────────────────────────────────────────
+
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-site-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${SiteBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}'
+
+  SiteOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-site-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # Next's static export writes /login.html, /new.html, ... — map clean URLs to them.
+  UrlRewriteFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub '${AWS::StackName}-url-rewrite'
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Map extensionless paths to the exported .html files
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          if (uri === '/') {
+            request.uri = '/index.html';
+          } else if (uri.endsWith('/')) {
+            request.uri = uri.slice(0, -1) + '.html';
+          } else if (uri.lastIndexOf('.') <= uri.lastIndexOf('/')) {
+            request.uri = uri + '.html';
+          }
+          return request;
+        }
+
+  SecurityHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub '${AWS::StackName}-security-headers'
+        SecurityHeadersConfig:
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: SAMEORIGIN
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: strict-origin-when-cross-origin
+            Override: true
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: false
+            Override: true
+        CustomHeadersConfig:
+          Items:
+            - Header: Permissions-Policy
+              Value: camera=(), microphone=(), geolocation=(), payment=()
+              Override: true
+            - Header: X-Robots-Tag
+              Value: noindex, nofollow
+              Override: true
+
+  # ─── API ───────────────────────────────────────────────────────────────────
+
+  RateLimitTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-api'
+      RetentionInDays: 14
+
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: api
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub '${ApiLogGroup.Arn}:*'
+              - Effect: Allow
+                Action: dynamodb:UpdateItem
+                Resource: !GetAtt RateLimitTable.Arn
+              # Read (and decrypt, via the AWS-managed aws/ssm key) only this
+              # stack's secrets.
+              - Effect: Allow
+                Action: ssm:GetParametersByPath
+                Resource:
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}'
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/*'
+
+  ApiFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-api'
+      PackageType: Image
+      Code:
+        ImageUri: !Ref ImageUri
+      Architectures: [arm64]
+      MemorySize: !Ref LambdaMemoryMb
+      # Matches the longest route (`maxDuration = 600` on POST /api/briefs).
+      Timeout: 600
+      Role: !GetAtt ApiRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref ApiLogGroup
+      Environment:
+        Variables:
+          # Secrets are NOT environment variables: they are KMS-encrypted SSM
+          # SecureStrings, decrypted into memory at start-up
+          # (backend/src/instrumentation.ts). Written by infra/deploy.sh.
+          SECRETS_SSM_PATH: !Sub '/${AWS::StackName}/'
+          RATE_LIMIT_TABLE: !Ref RateLimitTable
+          RATE_LIMIT_PER_HOUR: !Ref RateLimitPerHour
+          MAX_UPLOAD_MB: !Ref MaxUploadMb
+          ORG_NAME: !Ref OrgName
+          ORG_SHORT: !Ref OrgShort
+          OPENROUTER_SITE_URL: !Sub 'https://${DomainName}'
+          # One request per Lambda instance, so one Chromium at a time is enough.
+          PDF_MAX_CONCURRENT_RENDERS: '1'
+          # Lambda Web Adapter: forward invocations to the Next server on :3001
+          # and stream responses (keeps long generations alive through CloudFront).
+          AWS_LWA_PORT: '3001'
+          AWS_LWA_READINESS_CHECK_PROTOCOL: tcp
+          AWS_LWA_INVOKE_MODE: response_stream
+          # Only /tmp is writable on Lambda; Chromium needs a home and caches.
+          HOME: /tmp
+          XDG_CONFIG_HOME: /tmp/.config
+          XDG_CACHE_HOME: /tmp/.cache
+
+  ApiFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !GetAtt ApiFunction.Arn
+      # Public by necessity (CloudFront must reach it); the app itself refuses
+      # any request without CloudFront's x-origin-verify secret (src/proxy.ts).
+      AuthType: NONE
+      InvokeMode: RESPONSE_STREAM
+
+  ApiFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiFunction
+      Action: lambda:InvokeFunctionUrl
+      Principal: '*'
+      FunctionUrlAuthType: NONE
+
+  ApiFunctionInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiFunction
+      Action: lambda:InvokeFunction
+      Principal: '*'
+      InvokedViaFunctionUrl: true
+
+  ApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub '${AWS::StackName}-api'
+        # Host must NOT be forwarded: the function URL routes on its own hostname.
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - Accept
+            - Content-Type
+            - User-Agent
+            - CloudFront-Viewer-Address
+        CookiesConfig:
+          CookieBehavior: all
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
+  # ─── CDN + DNS ─────────────────────────────────────────────────────────────
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub 'ActionBrief (${DomainName})'
+        Aliases: [!Ref DomainName]
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: !Ref PriceClass
+        DefaultRootObject: index.html
+        Origins:
+          - Id: site
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt SiteOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+          - Id: api
+            DomainName: !Select [2, !Split ['/', !GetAtt ApiFunctionUrl.FunctionUrl]]
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
+              # The maximum without a quota increase. Long generations survive it
+              # because the backend streams a heartbeat byte every 10s.
+              OriginReadTimeout: 60
+              OriginKeepaliveTimeout: 5
+            OriginCustomHeaders:
+              - HeaderName: x-origin-verify
+                HeaderValue: !Ref OriginVerifySecret
+        DefaultCacheBehavior:
+          TargetOriginId: site
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+          ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt UrlRewriteFunction.FunctionMetadata.FunctionARN
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+            CachedMethods: [GET, HEAD]
+            # Edge compression could buffer the streamed heartbeat; responses are
+            # small JSON or already-compressed PDF/DOCX anyway.
+            Compress: false
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # Managed-CachingDisabled
+            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
+          - PathPattern: /_next/static/*
+            TargetOriginId: site
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+            ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
+        # S3 behind OAC answers 403 for a missing key. The API never returns 403
+        # through CloudFront (only to requests that bypass it), so this is safe.
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 404
+            ResponsePagePath: /404.html
+            ErrorCachingMinTTL: 10
+
+  DnsRecordA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt Distribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2 # CloudFront's fixed alias zone
+
+  DnsRecordAAAA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName: !GetAtt Distribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+
+Outputs:
+  SiteUrl:
+    Value: !Sub 'https://${DomainName}/'
+  SiteBucketName:
+    Value: !Ref SiteBucket
+  DistributionId:
+    Value: !Ref Distribution
+  ApiFunctionName:
+    Value: !Ref ApiFunction

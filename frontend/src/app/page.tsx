@@ -1,11 +1,18 @@
-import { redirect } from 'next/navigation';
-import { backendJson } from '@/lib/backend';
-import type { SessionInfo } from '@/lib/api-types';
+'use client';
 
-export const dynamic = 'force-dynamic';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+
+import { useSession } from '@/lib/session';
 
 /** Route to the app when signed in, otherwise to the gate. */
-export default async function RootPage() {
-  const { signedIn } = await backendJson<SessionInfo>('/api/auth/session');
-  redirect(signedIn ? '/new' : '/login');
+export default function RootPage() {
+  const router = useRouter();
+  const session = useSession();
+
+  useEffect(() => {
+    if (session) router.replace(session.signedIn ? '/new' : '/login');
+  }, [router, session]);
+
+  return null;
 }
